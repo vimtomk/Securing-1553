@@ -3,6 +3,7 @@ from Bus_Controller.Message_Layer.ML_Decoder_BC import MessageLayerDecoderBC
 from Bus_Controller.Physical_Layer_Emulation.Communication_Socket_BC import BC_Listener
 from Bus_Controller.Physical_Layer_Emulation.Communication_Socket_BC import BC_Sender
 import threading
+import binascii
 import time
 
 
@@ -10,7 +11,7 @@ class Bus_Controller:
 
     def _send_data(self, frames):
         for frame in frames:
-            BC_Sender().send_message(bytes(frame))
+            BC_Sender().send_message(bytes(frame, encoding='utf-8'))
             time.sleep(1)
 
     def _handle_incoming_frame(self, frame):

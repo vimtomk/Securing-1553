@@ -40,7 +40,7 @@ class MessageLayerEncoderBC:
         for i in range(0, len(message)-1, 2):
             data_word_characters.append(message[i:i+2])
             communication_frames.append(
-                self.construct_data_word(message[i:i+2].encode("hex")))
+                self.construct_data_word(message[i:i+2].encode("utf-8").hex()))
         data_word_count = '{0:02}'.format(len(data_word_characters))
         communication_frames.insert(0, self.construct_command_word(
             rt_address, "R", sub_addres_or_mode_code, data_word_count))
