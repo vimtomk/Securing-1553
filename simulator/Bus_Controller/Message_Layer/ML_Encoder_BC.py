@@ -1,4 +1,4 @@
-from Data_Link_Layer.Data_Link_Layer_Encoder_BC import DataLinkLayerEncoderBC
+from Bus_Controller.Message_Layer.Data_Link_Layer.Data_Link_Layer_Encoder_BC import DataLinkLayerEncoderBC
 
 
 class MessageLayerEncoderBC:
