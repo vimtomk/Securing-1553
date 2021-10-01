@@ -39,9 +39,11 @@ if __name__ == "__main__":
     # print(MessageLayerEncoderBC().send_message_to_RT(
     #     "01", "11", "SOme message"))
     # print(MessageLayerEncoderBC().receive_message_from_RT("01", "01", "02"))
+    """Issue with this code here
     # print(
     # MessageLayerAnalyzerRT().interprete_incoming_frame(
-    #     "00100001010001001101")
+    #     "00100001010001001101"))
+    """
     # print(MessageLayerDecoderBC().interprete_incoming_frame(
     #         "10000001000000000011"))
     # BC_Sender().send_message("10000001000000000011")
