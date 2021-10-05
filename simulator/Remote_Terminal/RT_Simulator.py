@@ -1,6 +1,6 @@
-from Remote_Terminal.Message_Layer.ML_Analyzer_RT import MessageLayerAnalyzerRT
-from Remote_Terminal.Physical_Layer_Emulation.Communication_Socket_RT import RT_Listener
-from Remote_Terminal.Physical_Layer_Emulation.Communication_Socket_RT import RT_Sender
+from Message_Layer.ML_Analyzer_RT import MessageLayerAnalyzerRT
+from Physical_Layer_Emulation.Communication_Socket_RT import RT_Listener
+from Physical_Layer_Emulation.Communication_Socket_RT import RT_Sender
 import threading
 import time
 

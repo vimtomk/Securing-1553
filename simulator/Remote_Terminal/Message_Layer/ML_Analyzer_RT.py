@@ -1,5 +1,5 @@
-from Remote_Terminal.Message_Layer.Data_Link_Layer.Data_Link_Layer_Decoder_RT import DataLinkLayerDecoderRT
-from Remote_Terminal.Message_Layer.Data_Link_Layer.Data_Link_Layer_Encoder_RT import DataLinkLayerEncoderRT
+from Message_Layer.Data_Link_Layer.Data_Link_Layer_Decoder_RT import DataLinkLayerDecoderRT
+from Message_Layer.Data_Link_Layer.Data_Link_Layer_Encoder_RT import DataLinkLayerEncoderRT
 
 
 class MessageLayerAnalyzerRT:
