@@ -1,5 +1,5 @@
-from Data_Link_Layer_Decoder_RT import DataLinkLayerDecoderRT
-from Data_Link_Layer_Encoder_RT import DataLinkLayerEncoderRT
+from Data_Link_Layer import Data_Link_Layer_Decoder_RT
+from Data_Link_Layer import Data_Link_Layer_Encoder_RT
 
 
 class MessageLayerAnalyzerRT:
