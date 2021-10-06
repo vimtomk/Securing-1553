@@ -5,7 +5,7 @@
 
 import socket
 
-client_ = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # MODIFY TO MEET MIL-STD-1553
-client_.connect((socket.gethostname(), 1234)) # MODIFY TO MEET MIL-STD-1553 & MATCH SYSTEM REQ.
+client_ = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) # Simulator requires DGRAM type and UDP protocol
+client_.connect((socket.gethostname(), 2000)) # Simulator declares port 2000 for sending TO BUS, so we send data to this port
 
 # To-Do : Implement MIL-STD-1553 standards for encoding, packetization, port numbers, etc... in this code file and its partner "server.py"
