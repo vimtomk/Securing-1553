@@ -1,22 +1,20 @@
+from Bus_Controller.BC_Simulator import *
+from Bus_Controller.Message_Layer.ML_Encoder_BC import *
+from Bus_Controller.Message_Layer.ML_Decoder_BC import *
+from Bus_Controller.Physical_Layer_Emulation.Communication_Socket_BC import *
+from Bus_Controller.Message_Layer.Data_Link_Layer.Data_Link_Layer_Decoder_BC import *
+from Bus_Controller.Message_Layer.Data_Link_Layer.Data_Link_Layer_Encoder_BC import *
 
-from Bus_Controller.Message_Layer.Data_Link_Layer.Data_Link_Layer_Encoder_BC import DataLinkLayerEncoderBC
-from Remote_Terminal.Message_Layer.Data_Link_Layer.Data_Link_Layer_Decoder_RT import DataLinkLayerDecoderRT
+from Remote_Terminal.RT_Simulator import *
+from Remote_Terminal.Message_Layer.ML_Analyzer_RT import *
+from Remote_Terminal.Physical_Layer_Emulation.Communication_Socket_RT import *
+from Remote_Terminal.Message_Layer.Data_Link_Layer.Data_Link_Layer_Decoder_RT import *
+from Remote_Terminal.Message_Layer.Data_Link_Layer.Data_Link_Layer_Encoder_RT import *
 
-from Remote_Terminal.Message_Layer.Data_Link_Layer.Data_Link_Layer_Encoder_RT import DataLinkLayerEncoderRT
-from Bus_Controller.Message_Layer.Data_Link_Layer.Data_Link_Layer_Decoder_BC import DataLinkLayerDecoderBC
-
-from Remote_Terminal.Message_Layer.Data_Link_Layer.Mode_Code_Analyzer import ModeCodeAnalyzer
-
-from Bus_Controller.Message_Layer.ML_Encoder_BC import MessageLayerEncoderBC
-from Bus_Controller.Message_Layer.ML_Decoder_BC import MessageLayerDecoderBC
-from Remote_Terminal.Message_Layer.ML_Analyzer_RT \
-    import MessageLayerAnalyzerRT
-from Bus_Controller.Physical_Layer_Emulation.Communication_Socket_BC \
-    import BC_Sender
-from Bus_Controller.BC_Simulator import Bus_Controller
-from Remote_Terminal.RT_Simulator import Remote_Terminal
 import threading
 import time
+import sys
+
 
 global bc_listener_thread
 global rt_listener_thread
@@ -28,11 +26,11 @@ if __name__ == "__main__":
     # status_wd_frame = DataLinkLayerEncoderRT().build_status_word("1F")
     # status_wd = DataLinkLayerDecoderBC().decode_status_word(status_wd_frame)
 
-    # data_wd_frame_BC = DataLinkLayerEncoderBC().build_data_word("ABCD")
+    data_wd_frame_BC = DataLinkLayerEncoderBC().build_data_word("ABCD")
     # data_wd_frame_RT = DataLinkLayerEncoderRT().build_data_word("123F")
 
     # data_word_BC = \
-    # DataLinkLayerDecoderBC().decode_data_word(data_wd_frame_BC)
+    DataLinkLayerDecoderBC().decode_data_word(data_wd_frame_BC)
 
     # ModeCodeAnalyzer().analyze_mode_code("01T1F02")
 
@@ -60,8 +58,8 @@ if __name__ == "__main__":
 
         # time.sleep(5)
 
-        Bus_Controller().send_data_to_rt("01", "11", "Some Message")
-        Bus_Controller().receive_data_from_rt("01", "01", "07")
+        #Bus_Controller().send_data_to_rt("01", "11", "Some Message")
+        #Bus_Controller().receive_data_from_rt("01", "01", "07")
 
     except KeyboardInterrupt:
         exit()
