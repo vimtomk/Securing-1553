@@ -2,57 +2,64 @@
 
 # This file is a WORK IN PROGRESS
 # ToDo:
-# Replace example event with actual code that gets an event from the simulator
-# Loop execution so the logging occurs continuously as long as the program is left running
+# Replace example event with actual code that gets an event from the simulator CORRECTLY
 import socket
 import threading
 import json
 import time
 from datetime import datetime
+from Bus_Controller.Physical_Layer_Emulation.Communication_Socket_BC import BC_Listener
+from Bus_Controller.Message_Layer.ML_Decoder_BC import MessageLayerDecoderBC
 
-# Copy BC_Listener class from Bus_Controller.Physical_Layer_Emulation.Communication_Socket_BC.py and edit
-class BC_Listener:
+global logger_thread
+global eventdata
 
-    data_received = list()
+# Class that codes to listen in on communications over the bus, modification of Bus_Controller class
+class Bus_Logger:
 
-    def start_listening(self):
-        port = 2000
-        socket_variable = \
-            socket.socket(
-                socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        socket_variable.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        socket_variable.bind(("", port))
+    # Function to add date and time information to a log entry
+    def addtime (self, dictionary) :
+        "This takes a dictionary and adds entries for the date and time of function call"
+        now = datetime.now()
+        dictionary['time_year'] = now.strftime('%Y')
+        dictionary['time_month'] = now.strftime('%m')
+        dictionary['time_day'] = now.strftime('%d')
+        dictionary['time_hour'] = now.strftime('%H')
+        dictionary['time_minute'] = now.strftime('%M')
+        dictionary['time_second'] = now.strftime('%S')
+    
+    def logevent (self, event) :
+        "This takes an event of received data, parsed as a dictionary, and logs it"
+        # Name of file should be from date
+        self.addtime(event)
+        now = datetime.now()
+        jsonfilename = now.strftime('%m-%d-%Y_log.json')
+        # Output of event to json
+        with open(jsonfilename, 'a') as event_dumped :
+            json.dump(event, event_dumped)
+
+    def start_listener(self):
+        "This starts a listening thread"
+        # Log start of logging
+        logstart = { 'message' : 'Logging has started' }
+        self.logevent(logstart)
+        # Example dict of event to log (Comment out for real runs)
+        event_EX = {
+            'flag1' : '01',
+            'flag2' : '11',
+            'length' : '07'
+        }
+        self.logevent(event_EX)
+        listener = BC_Listener()
+        listener_thread = threading.Thread(target=listener.start_listening)
+        listener_thread.start()
         while True:
-            data, addr = socket_variable.recvfrom(1024)
-            self.data_received.append(str(data))
-
-# Function to add date and time information to a log entry
-def addtime ( dictionary ) :
-    "This takes a dictionary and adds entries for the date and time of function call"
-    now = datetime.now()
-    dictionary['time_year'] = now.strftime('%Y')
-    dictionary['time_month'] = now.strftime('%m')
-    dictionary['time_day'] = now.strftime('%d')
-    dictionary['time_hour'] = now.strftime('%H')
-    dictionary['time_minute'] = now.strftime('%M')
-    dictionary['time_second'] = now.strftime('%S')
-    return
-
-def logevent ( event ) :
-    "This takes an event of received data, parsed as a dictionary, and logs it"
-    # Name of file should be from date
-    addtime(event)
-    now = datetime.now()
-    jsonfilename = now.strftime('%m-%d-%Y_log.json')
-    # Output of event to json
-    with open(jsonfilename, 'a') as event_dumped :
-        json.dump(event, event_dumped)
+            if not len(listener.data_received) == 0:
+            	eventData = {'Message' : listener.data_received}
+            	logevent(eventData)
+                listener.data_received.pop(0)
 
 if __name__ == "__main__":
-    # Example dict of event to log
-    event_EX = {
-        'flag1' : '01',
-        'flag2' : '11',
-        'length' : '07'
-    }
-    logevent(event_EX)
+    # Log incoming data
+    logger_thread = threading.Thread(target=Bus_Logger().start_listener)
+    logger_thread.start()
