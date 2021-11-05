@@ -14,17 +14,17 @@ if __name__ == "__main__":
         Bus_Controller().send_data_to_rt("01", "11", "Some Message")
         Bus_Controller().receive_data_from_rt("01", "01", "07")
         
-        #time.sleep(5)
+        time.sleep(5)
         
         # Message 2
-        #Bus_Controller().send_data_to_rt("01", "11", "Eat my shorts")
-        #Bus_Controller().receive_data_from_rt("01", "01", "07"))
+        Bus_Controller().send_data_to_rt("01", "11", "Eat my shorts!")
+        Bus_Controller().receive_data_from_rt("01", "01", "08")
         
-        #time.sleep(5)
+        time.sleep(5)
         
         # Message 2
-        #Bus_Controller().send_data_to_rt()
-        #Bus_Controller().receive_data_from_rt()
+        Bus_Controller().send_data_to_rt("01", "11", "Another Message.")
+        Bus_Controller().receive_data_from_rt("01", "01", "09")
         
     except KeyboardInterrupt:
         exit()

@@ -7,7 +7,10 @@ import socket
 import threading
 import json
 import time
+import os
 from datetime import datetime
+#from Bus_Controller.Physical_Layer_Emulation.Communication_Socket_BC import BC_Listener
+#from Bus_Controller.Message_Layer.ML_Decoder_BC import MessageLayerDecoderBC
 from Bus_Controller.Physical_Layer_Emulation.Communication_Socket_BC import BC_Listener
 from Bus_Controller.Message_Layer.ML_Decoder_BC import MessageLayerDecoderBC
 
@@ -27,6 +30,7 @@ class Bus_Logger:
         dictionary['time_hour'] = now.strftime('%H')
         dictionary['time_minute'] = now.strftime('%M')
         dictionary['time_second'] = now.strftime('%S')
+        dictionary['time_microsecond'] = now.strftime('%f')
     
     def logevent (self, event) :
         "This takes an event of received data, parsed as a dictionary, and logs it"
@@ -35,8 +39,11 @@ class Bus_Logger:
         now = datetime.now()
         jsonfilename = now.strftime('%m-%d-%Y_log.json')
         # Output of event to json
-        with open(jsonfilename, 'a') as event_dumped :
+        with open(os.getcwd() + '/logs/' + jsonfilename, 'a') as event_dumped :
             json.dump(event, event_dumped)
+
+    def handle_incoming_frame(self, frame):
+        self.logevent(MessageLayerDecoderBC().interprete_incoming_frame(frame))
 
     def start_listener(self):
         "This starts a listening thread"
@@ -44,19 +51,19 @@ class Bus_Logger:
         logstart = { 'message' : 'Logging has started' }
         self.logevent(logstart)
         # Example dict of event to log (Comment out for real runs)
-        event_EX = {
-            'flag1' : '01',
-            'flag2' : '11',
-            'length' : '07'
-        }
-        self.logevent(event_EX)
+        #event_EX = {
+        #    'flag1' : '01',
+        #    'flag2' : '11',
+        #    'length' : '07'
+        #}
+        #self.logevent(event_EX)
         listener = BC_Listener()
         listener_thread = threading.Thread(target=listener.start_listening)
         listener_thread.start()
         while True:
             if not len(listener.data_received) == 0:
             	eventData = {'Message' : listener.data_received}
-            	logevent(eventData)
+            	self.logevent(eventData)
                 listener.data_received.pop(0)
 
 if __name__ == "__main__":
