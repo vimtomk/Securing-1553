@@ -30,16 +30,9 @@ if __name__ == "__main__":
         "01", "11", "SOme message"))
     print(MessageLayerEncoderBC().receive_message_from_RT("01", "01", "02"))
 
-    """ TODO: Fix Error shown below.
-    File "/src/Remote_Terminal/Message_Layer/ML_Analyzer_RT.py", line 67, in interprete_incoming_frame
-    print(data_word.decode("hex"))
-    AttributeError: 'str' object has no attribute 'decode'
-    """
-    #print(
-    #MessageLayerAnalyzerRT().interprete_incoming_frame(
-    #    "00100001010001001101"))
+    print(MessageLayerAnalyzerRT().interprete_incoming_frame(
+        "00100001010001001101"))
     
-
     print(MessageLayerDecoderBC().interprete_incoming_frame(
             "10000001000000000011"))
 
@@ -48,11 +41,11 @@ if __name__ == "__main__":
     socket_variable.sendto(message, (destination_ip, destination_port))
 TypeError: a bytes-like object is required, not 'str'
     """
-    # BC_Sender().send_message("10000001000000000011")
+    #BC_Sender().send_message("10000001000000000011")
 
-    try:
-        """ Use following threads if you are running all the 
-            simulators on the same machine """
+    #try:
+    #    """ Use following threads if you are running all the 
+    #        simulators on the same machine """
         #bc_listener_thread = threading.Thread(
         #    target=Bus_Controller().start_listener)
         #bc_listener_thread.start()
@@ -60,10 +53,10 @@ TypeError: a bytes-like object is required, not 'str'
         #    target=Remote_Terminal().start_listener)
         #rt_listener_thread.start()
 
-        #time.sleep(5)
+        #time.sleep(2)
 
         #Bus_Controller().send_data_to_rt("01", "11", "Some Message")
         #Bus_Controller().receive_data_from_rt("01", "01", "07")
 
-    except KeyboardInterrupt:
-        exit()
+    #except KeyboardInterrupt:
+    #    exit()

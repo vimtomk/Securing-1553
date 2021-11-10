@@ -3,7 +3,7 @@
 from .Data_Link_Layer.Data_Link_Layer_Decoder_RT import *
 from .Data_Link_Layer.Data_Link_Layer_Encoder_RT import *
 from .Data_Link_Layer.Mode_Code_Analyzer import *
-
+import codecs
 
 class MessageLayerAnalyzerRT:
 
@@ -64,4 +64,8 @@ class MessageLayerAnalyzerRT:
 
         elif incoming_frame[0:3] == "001":
             data_word = self._deconstruct_data_word(incoming_frame)
-            print(data_word.decode("hex"))
+            # comes out as 0x26, need to turn to ascii
+            #byte_array = bytearray.fromhex(data_word)
+            #print(byte_array.decode())
+            binary_str = codecs.decode(data_word,'hex')
+            print(str(binary_str,'utf-8'))
