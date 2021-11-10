@@ -4,17 +4,33 @@
 import socket
 import os
 import sys
+import sched
+import time
 from threading import Thread
+from Bus_Controller.BC_Simulator import Bus_Controller
+
+global bc_listener_thread
+global rt_listener_thread
 
 # TODO : Add code to function "loopexecute"
-# TODO : Add code to function "executeonce"
 # TODO : Add code to print the sent message to terminal at the time of sending, if this file is run alone
 
-def loopexecute(id, msg, frequency):
-    "Executes a message indefinitely, at a given frequency"
-
-def executeonce(id, msg, delay):
+def executeonce(threadid, msg, delay):
     "Executes a message once, after a given delay"
+    time.sleep(delay)
+    print("Thread #" + str(threadid) + " is sending Message: " + msg) ###DEBUG#LINE###
+    # Calculate how much data the receiver needs to listen for
+    recvlen = len(msg)
+    if (recvlen % 2) != 0:
+    	recvlen += 1
+    recvlen = (recvlen // 2) + 2
+    # Send data
+    Bus_Controller().send_data_to_rt("01", "11", msg)
+    Bus_Controller().receive_data_from_rt("01", "01", str(recvlen))
+
+def loopexecute(threadid, msg, delay, frequency):
+    "Executes a message indefinitely, at a given frequency"
+    time.sleep(delay)
 
 # Default case executes without argument, otherwise read in from file
 if (len(sys.argv) >= 3):
@@ -23,7 +39,7 @@ if (len(sys.argv) >= 3):
     print("If an argument is given, it should be the name of the input csv in this folder.")
     sys.exit(0)
 if (len(sys.argv) == 1):
-    infile = open(os.getcwd() + '/io/csvs/defualt.csv', 'r')
+    infile = open(os.getcwd() + '/io/csvs/default.csv', 'r')
 else:
     infile = open(sys.argv[1], 'r')
 
@@ -33,16 +49,23 @@ infile.close()
 
 # Parse lines and create threads to do tasks
 threads = []
+tid = 0
 for msg in msglines:
-    # [0] is message, [1] is loop flag, [2] is loop frequency (Hz) OR delay (s)
-    # all else is stored in [3] and disregarded
-    parsed = msg.split(',', 3)
-    if (parsed[1] == 0):
+    # [0] is message, [1] is delay (s), [2] is loop flag, [3] is loop frequency (Hz)
+    # all else is stored in [4] and disregarded...
+    tid += 1
+    parsed = msg.split(',', 4)
+    print("Message: " + parsed[0]) ###DEBUG#LINE###
+    print("Delay is of " + parsed[1] + " seconds.") ###DEBUG#LINE###
+    print("Loop flag is set to: " + parsed[2]) ###DEBUG#LINE###
+    if (int(parsed[2]) == 0):
         # Pass to function that executes once
-        t = Thread(target=executeonce, args=(parsed[0], parsed[2]))
+        print("Message executes once.") ###DEBUG#LINE###
+        t = Thread(target=executeonce, args=(tid, parsed[0], float(parsed[1])))
     else:
     	# Pass to function that executes in a loop
-    	t = Thread(target=executeonce, args=(parsed[0], parsed[2]))
+    	print("Message executes in a loop of frequency " + parsed[3] + " Hz.") ###DEBUG#LINE###
+    	t = Thread(target=loopexecute, args=(tid, parsed[0], float(parsed[1]), float(parsed[3])))
     threads.append(t)
     t.start()
 
@@ -56,8 +79,9 @@ for msg in msglines:
 #
 # The specific input file must be given via ???
 # There must be fields to take -
-# - message to be sent
-# - to loop / not to loop
+# - message to be sent?
+# - how long until message is sent?
+# - to loop / not to loop?
 # - if looping, what frequency/how often?
-# For example, "This is a message.,0,1" is just sending the string "This is a message." after 1s with no loop.
-# Alternatively, "This is spam!,1,.5" is looping the message "This is spam!" at .5Hz, or once every 2 seconds
+# For example, "This is a message.,1,0,0" is just sending the string "This is a message." after 1s with no loop.
+# Alternatively, "This is spam!,0,1,.5" is looping the message "This is spam!" at .5Hz, or once every 2 seconds.

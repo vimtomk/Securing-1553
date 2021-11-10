@@ -3,25 +3,20 @@
 # This file attempts to listen in on the communications of the MIL Bus and log activity in a .json file
 
 # This file is a WORK IN PROGRESS
-# ToDo:
-# Replace example event with actual code that gets an event from the simulator CORRECTLY
-
-
-#from Bus_Controller.Physical_Layer_Emulation.Communication_Socket_BC import BC_Listener
-#from Bus_Controller.Message_Layer.ML_Decoder_BC import MessageLayerDecoderBC
-from Bus_Controller.Physical_Layer_Emulation.Communication_Socket_BC import BC_Listener
-from Bus_Controller.Message_Layer.ML_Decoder_BC import MessageLayerDecoderBC
-
+# TODO: Replace example event with actual code that gets an event from the simulator CORRECTLY
 import socket
 import threading
 import json
 import time
 import os
 from datetime import datetime
+#from Bus_Controller.Physical_Layer_Emulation.Communication_Socket_BC import BC_Listener
+#from Bus_Controller.Message_Layer.ML_Decoder_BC import MessageLayerDecoderBC
+from Bus_Controller.Physical_Layer_Emulation.Communication_Socket_BC import BC_Listener
+from Bus_Controller.Message_Layer.ML_Decoder_BC import MessageLayerDecoderBC
 
 global logger_thread
 global eventdata
-
 
 # Class that codes to listen in on communications over the bus, modification of Bus_Controller class
 class Bus_Logger:
@@ -45,7 +40,7 @@ class Bus_Logger:
         now = datetime.now()
         jsonfilename = now.strftime('%m-%d-%Y_log.json')
         # Output of event to json
-        with open(os.getcwd() + '/logs/' + jsonfilename, 'a') as event_dumped :
+        with open(os.getcwd() + '/io/jsons/' + jsonfilename, 'a') as event_dumped :
             json.dump(event, event_dumped)
 
     def handle_incoming_frame(self, frame):
@@ -68,8 +63,8 @@ class Bus_Logger:
         listener_thread.start()
         while True:
             if not len(listener.data_received) == 0:
-                eventData = {'Message' : listener.data_received}
-                self.logevent(eventData)
+            	eventData = {'Message' : listener.data_received}
+            	self.logevent(eventData)
                 listener.data_received.pop(0)
 
 if __name__ == "__main__":
