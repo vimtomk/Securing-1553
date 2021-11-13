@@ -4,7 +4,6 @@
 import socket
 import os
 import sys
-import sched
 import time
 from threading import Thread
 from Bus_Controller.BC_Simulator import Bus_Controller
@@ -12,25 +11,38 @@ from Bus_Controller.BC_Simulator import Bus_Controller
 global bc_listener_thread
 global rt_listener_thread
 
-# TODO : Add code to function "loopexecute"
 # TODO : Add code to print the sent message to terminal at the time of sending, if this file is run alone
 
 def executeonce(threadid, msg, delay):
     "Executes a message once, after a given delay"
     time.sleep(delay)
-    print("Thread #" + str(threadid) + " is sending Message: " + msg) ###DEBUG#LINE###
-    # Calculate how much data the receiver needs to listen for
-    recvlen = len(msg)
-    if (recvlen % 2) != 0:
-    	recvlen += 1
-    recvlen = (recvlen // 2) + 2
+    #print("Thread #" + str(threadid) + " is sending Message: " + msg) ###DEBUG#LINE###
     # Send data
-    Bus_Controller().send_data_to_rt("01", "11", msg)
-    Bus_Controller().receive_data_from_rt("01", "01", str(recvlen))
+    rt_addr = threadid - 1
+    if (rt_addr >= 32):
+    	# 1553 only supports up to 32 RTs
+    	sys.exit(0)
+    if (rt_addr < 10):
+    	arg1 = "0" + str(rt_addr)
+    else:
+        arg1 = str(rt_addr)
+    Bus_Controller().send_data_to_rt(arg1, "01", msg)
+    Bus_Controller().receive_data_from_rt(arg1, "01", "07")
 
 def loopexecute(threadid, msg, delay, frequency):
     "Executes a message indefinitely, at a given frequency"
     time.sleep(delay)
+    rt_addr = threadid - 1
+    if (rt_addr >= 32):
+    	# 1553 only supports up to 32 RTs
+    	sys.exit(0)
+    if (rt_addr < 10):
+    	arg1 = "0" + str(rt_addr)
+    sec_delay = float(1) // frequency
+    while True:
+        time.sleep(sec_delay)
+        Bus_Controller().send_data_to_rt(arg1, "01", msg)
+        Bus_Controller().receive_data_from_rt(arg1, "01", "07")
 
 # Default case executes without argument, otherwise read in from file
 if (len(sys.argv) >= 3):
@@ -55,16 +67,16 @@ for msg in msglines:
     # all else is stored in [4] and disregarded...
     tid += 1
     parsed = msg.split(',', 4)
-    print("Message: " + parsed[0]) ###DEBUG#LINE###
-    print("Delay is of " + parsed[1] + " seconds.") ###DEBUG#LINE###
-    print("Loop flag is set to: " + parsed[2]) ###DEBUG#LINE###
+    #print("Message: " + parsed[0]) ###DEBUG#LINE###
+    #print("Delay is of " + parsed[1] + " seconds.") ###DEBUG#LINE###
+    #print("Loop flag is set to: " + parsed[2]) ###DEBUG#LINE###
     if (int(parsed[2]) == 0):
         # Pass to function that executes once
-        print("Message executes once.") ###DEBUG#LINE###
+        #print("Message executes once.") ###DEBUG#LINE###
         t = Thread(target=executeonce, args=(tid, parsed[0], float(parsed[1])))
     else:
     	# Pass to function that executes in a loop
-    	print("Message executes in a loop of frequency " + parsed[3] + " Hz.") ###DEBUG#LINE###
+    	#print("Message executes in a loop of frequency " + parsed[3] + " Hz.") ###DEBUG#LINE###
     	t = Thread(target=loopexecute, args=(tid, parsed[0], float(parsed[1]), float(parsed[3])))
     threads.append(t)
     t.start()
