@@ -197,19 +197,19 @@ for x in range(32):
 
 # We will now simulate sending a message between BC and Remote Terminal 0
 
-#message = "Hello I am the Bus Controller speaking to Remote Terminal 0"
+message = "Hello I am the Bus Controller speaking to Remote Terminal 0"
 
-#bus_controller_encrypted = bus_controller_to_remote_terminals[0].encrypt_message(message)
+bus_controller_encrypted = bus_controller_to_remote_terminals[0].encrypt_message(message)
 
-#print(bus_controller_encrypted)
-#bus_controller_decrypted = remote_terminals_to_bus_controller[0].decrypt_message(bus_controller_encrypted)
+print(bus_controller_encrypted)
+bus_controller_decrypted = remote_terminals_to_bus_controller[0].decrypt_message(bus_controller_encrypted)
 
-#print(bus_controller_decrypted)
+print(bus_controller_decrypted)
 
-#message_2 = "Hello I am Remote Terminal 0 and I received your message"
+message_2 = "Hello I am Remote Terminal 0 and I received your message"
 
-#print(remote_terminals_to_bus_controller[0].full_key)
-#print(bus_controller_to_remote_terminals[0].full_key)
+print(remote_terminals_to_bus_controller[0].full_key)
+print(bus_controller_to_remote_terminals[0].full_key)
 
 #remote_terminal_encrypted = remote_terminals_to_bus_controller[0].encrypt_message(message_2)
 
