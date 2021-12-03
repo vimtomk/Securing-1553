@@ -21,6 +21,8 @@ class DHKE(object):
         full_key = partial_key ** self.private_key     
         full_key = full_key % self.public_key2   
         self.full_key = full_key
+        if self.full_key == 0:
+            self.full_key += 5
         return full_key
 
 
