@@ -11,7 +11,6 @@ from Bus_Controller.BC_Simulator import Bus_Controller
 global bc_listener_thread
 global rt_listener_thread
 
-# TODO : Add code to print the sent message to terminal at the time of sending, if this file is run alone
 
 def executeonce(threadid, msg, delay):
     "Executes a message once, after a given delay"

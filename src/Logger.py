@@ -63,8 +63,8 @@ class Bus_Logger:
         listener_thread.start()
         while True:
             if not len(listener.data_received) == 0:
-            	eventData = {'Message' : listener.data_received}
-            	self.logevent(eventData)
+                eventData = {'Message' : listener.data_received}
+                self.logevent(eventData)
                 listener.data_received.pop(0)
 
 if __name__ == "__main__":
