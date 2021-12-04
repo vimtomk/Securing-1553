@@ -8,8 +8,8 @@ import time
 import sys
 
 
-global bc_listener_thread
-global rt_listener_thread
+#global bc_listener_thread
+#global rt_listener_thread
 
 if __name__ == "__main__":
     cmd_wd_frame = DataLinkLayerEncoderBC().build_cmd_word("01R041F")
