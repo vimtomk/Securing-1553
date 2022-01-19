@@ -58,20 +58,48 @@ class message(object):
 
 class command_word:
     
+    # Initialize each message field, turn the data to binary, and pack the bits.
     def __init__(self, rt_addr, tx_rx, sa_mode, mode_code):
-        self.rt_addr   = bin(rt_addr)       # 5 bit field
-        self.tx_rx     = bin(tx_rx)         # 1 bit flag
-        self.sa_mode   = bin(sa_mode)       # 5 bit field
-        self.mode_code = bin(mode_code)     # 5 bit field
+        self.msg_type  = BitArray(uint=5,         length=3)     # 3 bit field
+        self.rt_addr   = BitArray(uint=rt_addr,   length=5)     # 5 bit field
+        self.tx_rx     = BitArray(uint=tx_rx,     length=1)     # 1 bit flag
+        self.sa_mode   = BitArray(uint=sa_mode,   length=5)     # 5 bit field
+        self.mode_code = BitArray(uint=mode_code, length=5)     # 5 bit field
+
+    # Create the "data" part of the message.
+        self.msg = BitArray(self.rt_addr)
+        self.msg.append(self.tx_rx)
+        self.msg.append(self.sa_mode)
+        self.msg.append(self.mode_code)
+
+    # Calculate parity of data and append it to the message.
+        self.msg.append(BitArray(uint=((self.msg.count(1)) % 2 == 0), length=1))
+        
+    # Once parity is calculated, prepend the msg type.
+        self.msg.prepend(self.msg_type)
 
 class data_word:
     
+    # Initialize each message field, turn the data to binary, and pack the bits.
     def __init__(self, data):
-        self.data = data                    # 16 bit field
+        self.msg_type = BitArray(uint=6,        length=3)   # 3 bit field
+        self.data     = BitArray(uint=data,     length=16)  # 16 bit field
+        
+    # Create the "data" part of the message.
+        self.msg = BitArray(self.data)
+
+    # Calculate parity of data and append it to the message.
+        self.msg.append(BitArray(uint=((self.msg.count(1)) % 2 == 0), length=1))
+        
+    # Once parity is calculated, prepend the msg type.
+        self.msg.prepend(self.msg_type)
+        
 
 class status_word:
     
     def __init__(self, rt_addr, msg_err, instrum, serv_req, reserved, broad_comm, busy, sub_flag, dyn_bc, term_flag):
+
+        # Initialize each message field, turn the data to binary, and pack the bits.
         self.msg_type   = BitArray(uint=7,          length=3)  # 3 bit field
         self.rt_addr    = BitArray(uint=rt_addr,    length=5)  # 5 bit field
         self.msg_err    = BitArray(uint=msg_err,    length=1)  # 1 bit flag
@@ -84,22 +112,31 @@ class status_word:
         self.dyn_bc     = BitArray(uint=dyn_bc,     length=1)  # 1 bit flag
         self.term_flag  = BitArray(uint=term_flag,  length=1)  # 1 bit flag
         
+        # Create the "data" part of the message.
+        self.msg = BitArray(self.rt_addr)
+        self.msg.append(self.msg_err)
+        self.msg.append(self.instrum)
+        self.msg.append(self.serv_req)
+        self.msg.append(self.reserved)
+        self.msg.append(self.broad_comm)
+        self.msg.append(self.busy)
+        self.msg.append(self.sub_flag)
+        self.msg.append(self.dyn_bc)
+        self.msg.append(self.term_flag)
+
+        # Calculate parity of data and append it to the message.
+        self.msg.append(BitArray(uint=((self.msg.count(1)) % 2 == 0), length=1))
         
+        # Once parity is calculated, prepend the msg type.
+        self.msg.prepend(self.msg_type)
 
-        # This is henious but Python has forced my hand
+        # Print full message in binary without <0b> at the beginning.
+        print(self.msg.bin)
 
-        self.msg_type.append(self.rt_addr)
-        self.msg_type.append(self.msg_err)
-        self.msg_type.append(self.instrum)
-        self.msg_type.append(self.serv_req)
-        self.msg_type.append(self.reserved)
-        self.msg_type.append(self.broad_comm)
-        self.msg_type.append(self.busy)
-        self.msg_type.append(self.sub_flag)
-        self.msg_type.append(self.dyn_bc)
-        self.msg_type.append(self.term_flag)
 
-        # Setting odd parity bit.
-        self.msg_type.append(BitArray(uint=((self.msg_type.count(0)) & 1), length=1))
-
-        print(self.msg_type.bin) # Full message here in binary without annoying <0b'>
+"""Sample code to turn string into binary (helpful when taking in string)
+from bitstring import Bits, BitArray
+str = "Hello"
+bs  = Bits('0b'+(''.join(format(i, '08b') for i in bytearray(str, encoding='utf-8'))))
+bs.bin
+"""
