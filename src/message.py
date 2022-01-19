@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-
+from bitstring import Bits, BitArray, BitString
 
 class message(object):
 
-
     def __init__(self, msg):
-        if len(bin(msg)) > 22:
+    
+        if len(bin(int(msg, base=2))) > 22:
             print("ERROR: Message given longer than 20 bits!")
             self.__del__()
             exit()
@@ -56,4 +56,50 @@ class message(object):
     def __del__(self):
         del(self)
 
+class command_word:
+    
+    def __init__(self, rt_addr, tx_rx, sa_mode, mode_code):
+        self.rt_addr   = bin(rt_addr)       # 5 bit field
+        self.tx_rx     = bin(tx_rx)         # 1 bit flag
+        self.sa_mode   = bin(sa_mode)       # 5 bit field
+        self.mode_code = bin(mode_code)     # 5 bit field
 
+class data_word:
+    
+    def __init__(self, data):
+        self.data = data                    # 16 bit field
+
+class status_word:
+    
+    def __init__(self, rt_addr, msg_err, instrum, serv_req, reserved, broad_comm, busy, sub_flag, dyn_bc, term_flag):
+        self.msg_type   = BitArray(uint=7,          length=3)  # 3 bit field
+        self.rt_addr    = BitArray(uint=rt_addr,    length=5)  # 5 bit field
+        self.msg_err    = BitArray(uint=msg_err,    length=1)  # 1 bit flag
+        self.instrum    = BitArray(uint=instrum,    length=1)  # 1 bit flag
+        self.serv_req   = BitArray(uint=serv_req,   length=1)  # 1 bit flag
+        self.reserved   = BitArray(uint=reserved,   length=3)  # 3 bit field
+        self.broad_comm = BitArray(uint=broad_comm, length=1)  # 1 bit flag
+        self.busy       = BitArray(uint=busy,       length=1)  # 1 bit flag
+        self.sub_flag   = BitArray(uint=sub_flag,   length=1)  # 1 bit flag
+        self.dyn_bc     = BitArray(uint=dyn_bc,     length=1)  # 1 bit flag
+        self.term_flag  = BitArray(uint=term_flag,  length=1)  # 1 bit flag
+        
+        
+
+        # This is henious but Python has forced my hand
+
+        self.msg_type.append(self.rt_addr)
+        self.msg_type.append(self.msg_err)
+        self.msg_type.append(self.instrum)
+        self.msg_type.append(self.serv_req)
+        self.msg_type.append(self.reserved)
+        self.msg_type.append(self.broad_comm)
+        self.msg_type.append(self.busy)
+        self.msg_type.append(self.sub_flag)
+        self.msg_type.append(self.dyn_bc)
+        self.msg_type.append(self.term_flag)
+
+        # Setting odd parity bit.
+        self.msg_type.append(BitArray(uint=((self.msg_type.count(0)) & 1), length=1))
+
+        print(self.msg_type.bin) # Full message here in binary without annoying <0b'>
