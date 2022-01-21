@@ -63,19 +63,19 @@ class command_word:
     
     
     def __init__(self, data):
-        self.msg_type   = data.bin[0:3]    # Three bit field
-        self.rt_addr    =  data.bin[3:8]   # Five bit flag
-        self.tx_rx      = data.bin[8]      # One bit flag
-        self.sa_mode    = data.bin[9:14]   # Five bit field
-        self.mode_code  = data.bin[14:19]  # Five bit field
+         self.msg_type   = BitArray(uint=5,      length=3)
+         self.rt_addr    =  data.bin[0:5]   # Five bit flag
+         self.tx_rx      = data.bin[5]      # One bit flag
+         self.sa_mode    = data.bin[6:11]   # Five bit field
+         self.mode_code  = data.bin[12:]  # Five bit field
 
-        self.msg = BitArray(data)
+         self.msg = BitArray(data)
         
     # Calculate parity of data and append it to the message.
-        self.msg.append(BitArray(uint=((self.msg.count(1)) % 2 == 0), length=1))
+         self.msg.append(BitArray(uint=((self.msg.count(1)) % 2 == 0), length=1))
         
     # Once parity is calculated, prepend the msg type.
-        self.msg.prepend(self.msg_type)
+         self.msg.prepend(self.msg_type)
         
 
     # Initialize each message field, turn the data to binary, and pack the bits.

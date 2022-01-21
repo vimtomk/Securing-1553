@@ -7,7 +7,6 @@ import queue
 # handled on a bus.
 class Bus:
 
-
     # Initialize the queue "messages"
     def __init__(self):
         self.messages = queue.Queue()
@@ -28,8 +27,12 @@ class Bus:
     def return_message(self):
         return self.messages.get()
 
+    # Return first message without popping
+    def return_first_message(self):
+        return(self.messages.queue[0])
+
     # Takes in a list as what is on the bus(enables MITM)
-    def receive_message(self, lst):
+    def mitm_message(self, lst):
         # Clear the message queue and replace with provided list
         self.messages.queue.clear()
         [self.messages.put(msg) for msg in lst]
@@ -42,6 +45,13 @@ class Bus:
     def return_session_data(self):
         return self.bus_monitor_data
 
+    # Clear all messages on bus
+    def clear_all(self):
+        self.messages.queue.clear()
+
     # Delete the instance for good memory management.
     def __del__(self):
         del(self)
+
+# Create instance of Bus to use throughout the program
+databus = Bus()
