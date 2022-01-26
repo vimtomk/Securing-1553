@@ -11,11 +11,11 @@ class message(object):
             exit()
         
         # The first three bits
-        self.msg_type_bits   = BitArray(uint=msg, length=3) #[2:5]
+        self.msg_type_bits   = BitArray(uint=msg[0:3], length=3) #[2:5]
         # The remaining seventeen bits
-        self.raw_data        = BitArray(uint=msg, length=16)#[5:-1]
+        self.raw_data        = BitArray(uint=msg[3:19], length=16)#[5:-1]
         # The last bit
-        self.parity_bit      = BitArray(uint=msg, length=1) #[-1:]
+        self.parity_bit      = BitArray(uint=msg[19], length=1) #[-1:]
         
         print(self.msg_type_bits)
         
@@ -64,10 +64,10 @@ class command_word:
     
     def __init__(self, data):
          self.msg_type   = BitArray(uint=5,      length=3)
-         self.rt_addr    =  data.bin[0:5]   # Five bit flag
+         self.rt_addr    = data.bin[0:5]    # Five bit flag
          self.tx_rx      = data.bin[5]      # One bit flag
          self.sa_mode    = data.bin[6:11]   # Five bit field
-         self.mode_code  = data.bin[12:]  # Five bit field
+         self.mode_code  = data.bin[12:]    # Five bit field
 
          self.msg = BitArray(data)
         
@@ -118,7 +118,7 @@ class data_word:
 
 class status_word:
 
-    def __init__(self, data):
+    def __init__(self, data): # data is a 
         self.msg_type   = BitArray(uint=7, length=3)  # 3 bit field
         self.rt_addr    = data.bin[0:5]   # Five bit field
         self.msg_err    = data.bin[5]     # One bit flag
