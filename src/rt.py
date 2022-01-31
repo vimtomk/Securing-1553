@@ -5,6 +5,7 @@ from bus import Bus, databus
 from time import sleep
 from bitstring import Bits, BitArray
 import queue
+
 class rt(object):
     
     # RT Constructor - number is to assign RT number
@@ -23,7 +24,7 @@ class rt(object):
             # Condition 4 : RT somehow receives the wrong number of data words
         self.instrumentation    = 0      # One bit flag, always 0 when transmitting a status word
         self.service            = 0      # Service request bit. We will not use this functionality
-        self.broadcast_command  = 0      # Broadcast command bit. We will not use this functionality
+        self.broadcast_command  = 0      # Broadcast command bit.
         self.busy               = 0      # Busy bit. Set if the BC commands the RT not to act
         self.subsystem          = 0      # Indicates subsystem. We will not use this functionality
         self.dynamic_bus        = 0      # Set if turned into a dynamic BC.
@@ -179,10 +180,6 @@ class rt(object):
                     process_mode_code(tmp_msg.sa_mode)
 
                     # This will tell the Remote Terminal how many data words to send or receive
-                    
-                    
-
-                        
 
                     return
 
