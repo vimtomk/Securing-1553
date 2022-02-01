@@ -18,12 +18,12 @@ class bm(object):
         # Begin normal BM behavior
         self.main()
 
-    # BM Constructor, with filename pre-defined
+    # BM Constructor, with filename pre-defined by function input
     def __init__(self, terminal, filename):
         # Initialize BM variables
         self.num                = BitArray(uint=terminal, length=5)     # Value indicating the terminal the bus monitor is listening from
         self.current_filename   = filename                              # String containing the name of the .json to log events to
-        self.temp_datetime      = datetime.now                          # Holds the datetime
+        self.temp_dt            = datetime.now                          # Holds the datetime
         # Begin normal BM behavior
         self.main()
 
@@ -34,39 +34,40 @@ class bm(object):
     
     def defualt_filename_to_date(self):
         '''This will set the name of the log file to the current date'''
-        temp_dt = datetime.now()
+        self.temp_dt = datetime.now()
         enum_months = enumerate({ 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'})
-        filename = temp_dt.strftime('%d-%m-%Y_log.json')
+        filename = self.temp_dt.strftime('%d-%m-%Y_log.json')
         del enum_months
         return
 
     #def record_bus_contents(self):
 
-    def log_to_json(self, event, filename):
+    def log_to_json(self, event):
         '''This takes an event of received data, as a dictionary, and logs it'''
-        with open(getcwd() + '/io/jsons/' + filename, 'a') as event_dumped :
+        with open(getcwd() + '/io/jsons/' + self.current_filename, 'a') as event_dumped :
             json.dump(event, event_dumped)
         return
 
     def addtime (self, dictionary) :
         '''This takes a dictionary and adds entries for the date and time of function call'''
-        now = datetime.now()
-        dictionary['time_year'] = now.strftime('%Y')
-        dictionary['time_month'] = now.strftime('%m')
-        dictionary['time_day'] = now.strftime('%d')
-        dictionary['time_hour'] = now.strftime('%H')
-        dictionary['time_minute'] = now.strftime('%M')
-        dictionary['time_second'] = now.strftime('%S')
-        dictionary['time_microsecond'] = now.strftime('%f')
+        self.temp_dt = datetime.now()
+        dictionary['time_year'] = self.temp_dt.strftime('%Y')
+        dictionary['time_month'] = self.temp_dt.strftime('%m')
+        dictionary['time_day'] = self.temp_dt.strftime('%d')
+        dictionary['time_hour'] = self.temp_dt.strftime('%H')
+        dictionary['time_minute'] = self.temp_dt.strftime('%M')
+        dictionary['time_second'] = self.temp_dt.strftime('%S')
+        dictionary['time_microsecond'] = self.temp_dt.strftime('%f')
         
     # Define other functions of a BM here
 
-    #def main(self):
-        #while(1):
-            #if(self.current_filename == 'Not yet set'):
-                #defualt_filename_to_date()
+    def main(self):
+        while(1):
+            if(self.current_filename == 'Not yet set'):
+                self.defualt_filename_to_date()
             # Define the behavior of a BM here
     
     # BM Destructor
     def __del__(self):
+        '''This is the destructor of the BM object'''
         del(self)

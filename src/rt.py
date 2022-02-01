@@ -177,7 +177,7 @@ class rt(object):
                     
                     # This will process set the Subaddress Mode
 
-                    process_mode_code(tmp_msg.sa_mode)
+                    #process_mode_code(tmp_msg.sa_mode)
 
                     # This will tell the Remote Terminal how many data words to send or receive
 
