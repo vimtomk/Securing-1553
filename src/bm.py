@@ -1,29 +1,42 @@
 #!/usr/bin/env python3
 
-from message import message, command_word, data_word, status_word
-from bus import Bus, databus
+from bus import databus
 from time import sleep
-from bitstring import Bits, BitArray
 from datetime import datetime
+from bitstring import BitArray
 from os import getcwd
+import threading
 import json
 
 class bm(object):
     # BM Constructor
-    def __init__(self, terminal):
+    def __init__(self, terminal, sync_freq):
+        '''This is the default initializer of the bus monitor object'''
         # Initialize BM variables
-        self.num                = BitArray(uint=terminal, length=5)     # Value indicating the terminal the bus monitor is listening from
-        self.current_filename   = 'Not yet set'                         # String containing the name of the .json to log events to
-        self.temp_dt      = datetime.now                          # Acts as a temporary holder for any datetime usage
+        self.num                = BitArray(uint=terminal, length=5) # Value indicating the terminal the bus monitor is listening from
+        self.current_filename   = 'Not yet set'                     # String containing the name of the .json to log events to
+        self.temp_dt            = datetime.now                      # Acts as a temporary holder for any datetime usage
+        self.frequency          = sync_freq                         # Time, in seconds, of how often the bus is checked
+        self.tmp_message        = None                              # Holds the message being processed
+        self.last_message       = None                              # Keeps track of the last message on the bus, to see if it changed
         # Begin normal BM behavior
         self.main()
 
     # BM Constructor, with filename pre-defined by function input
-    def __init__(self, terminal, filename):
+    def __init__(self, terminal, sync_freq, filename):
+        '''This is the argumented initializer of the bus monitor object, setting a custom filename for the log'''
         # Initialize BM variables
-        self.num                = BitArray(uint=terminal, length=5)     # Value indicating the terminal the bus monitor is listening from
-        self.current_filename   = filename                              # String containing the name of the .json to log events to
-        self.temp_dt            = datetime.now                          # Holds the datetime
+        self.num                = BitArray(uint=terminal, length=5) # Value indicating the terminal the bus monitor is listening from
+        self.current_filename   = filename                          # String containing the name of the .json to log events to
+        self.temp_dt            = datetime.now                      # Acts as a temporary holder for any datetime usage
+        self.frequency          = sync_freq                         # Time, in seconds, of how often the bus is checked
+        self.tmp_message        = None                              # Holds the message being processed
+        self.last_message       = None                              # Keeps track of the last message on the bus, to see if it changed
+        # Correct the filename if it lacks ".json"
+        if(len(self.current_filename) < 6):
+            self.current_filename.append('.json')
+        elif(self.current_filename[-5:] != '.json'):
+            self.current_filename.append('.json')
         # Begin normal BM behavior
         self.main()
 
@@ -36,11 +49,25 @@ class bm(object):
         '''This will set the name of the log file to the current date'''
         self.temp_dt = datetime.now()
         enum_months = enumerate({ 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'})
-        filename = self.temp_dt.strftime('%d-%m-%Y_log.json')
-        del enum_months
+        self.current_filename = self.temp_dt.strftime('%d-%m-%Y_log.json')
         return
 
-    #def record_bus_contents(self):
+    def record_bus_contents(self):
+        '''This will get the contents of the bus and record it every so often'''
+        threading.Timer(self.frequency, self.record_bus_contents).start()
+        self.tmp_message = databus.return_first_message()
+        # Is there anything new on the bus?
+        if(self.tmp_message == self.last_message):
+            # Nothing new to log, ignore what is on the bus
+            return
+        # Else, there is something new to log
+        bus_event = {}
+        bus_event["Message"] = self.tmp_message
+        self.addtime(bus_event)
+        pass #TODO:Add code to log a message from the bus
+        # Keep a temporary copy of the last message for future comparisons
+        self.last_message = self.tmp_message
+        return
 
     def log_to_json(self, event):
         '''This takes an event of received data, as a dictionary, and logs it'''
@@ -58,14 +85,12 @@ class bm(object):
         dictionary['time_minute'] = self.temp_dt.strftime('%M')
         dictionary['time_second'] = self.temp_dt.strftime('%S')
         dictionary['time_microsecond'] = self.temp_dt.strftime('%f')
-        
-    # Define other functions of a BM here
 
     def main(self):
-        while(1):
-            if(self.current_filename == 'Not yet set'):
-                self.defualt_filename_to_date()
-            # Define the behavior of a BM here
+        '''Main function'''
+        if(self.current_filename == 'Not yet set'):
+            self.defualt_filename_to_date()
+        self.record_bus_contents()
     
     # BM Destructor
     def __del__(self):

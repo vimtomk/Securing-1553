@@ -17,7 +17,8 @@ class message(object):
         # The last bit
         self.parity_bit      = BitArray(uint=msg[19], length=1) #[-1:]
         
-        print(self.msg_type_bits)
+        # Construct the whole message
+        self.msg             = BitArray(msg)
         
         # Setting the string msg_type based on bits
         if   (self.msg_type_bits.bin == "101"):
@@ -63,19 +64,21 @@ class command_word:
     
     
     def __init__(self, data):
-         self.msg_type   = BitArray(uint=5,      length=3)
-         self.rt_addr    = data.bin[0:5]    # Five bit flag
-         self.tx_rx      = data.bin[5]      # One bit flag
-         self.sa_mode    = data.bin[6:11]   # Five bit field
-         self.mode_code  = data.bin[12:]    # Five bit field
+        self.msg_type   = BitArray(uint=5,      length=3)
+        self.rt_addr    = data.bin[0:5]    # Five bit flag
+        self.tx_rx      = data.bin[5]      # One bit flag
+        self.sa_mode    = data.bin[6:11]   # Five bit field
+        self.mode_code  = data.bin[12:]    # Five bit field
 
-         self.msg = BitArray(data)
+        self.msg = BitArray(data)
         
     # Calculate parity of data and append it to the message.
-         self.msg.append(BitArray(uint=((self.msg.count(1)) % 2 == 0), length=1))
+        self.msg.append(BitArray(uint=((self.msg.count(1)) % 2 == 0), length=1))
         
     # Once parity is calculated, prepend the msg type.
-         self.msg.prepend(self.msg_type)
+        self.msg.prepend(self.msg_type)
+
+        return self.msg
         
 
     # Initialize each message field, turn the data to binary, and pack the bits.
@@ -98,6 +101,8 @@ class command_word:
     # Once parity is calculated, prepend the msg type.
         self.msg.prepend(self.msg_type)
 
+        return self.msg.bin
+
 class data_word:
     
 
@@ -114,6 +119,8 @@ class data_word:
         
     # Once parity is calculated, prepend the msg type.
         self.msg.prepend(self.msg_type)
+
+        return self.msg.bin
         
 
 class status_word:
@@ -141,7 +148,8 @@ class status_word:
         self.msg.prepend(self.msg_type)
 
         # Print full message in binary without <0b> at the beginning.
-        print(self.msg.bin)
+        #print(self.msg.bin)
+        return self.msg.bin
 
 
     def __init__(self, rt_addr, msg_err, instrum, serv_req, reserved, broad_comm, busy, sub_flag, dyn_bc, term_flag):
@@ -178,7 +186,9 @@ class status_word:
         self.msg.prepend(self.msg_type)
 
         # Print full message in binary without <0b> at the beginning.
-        print(self.msg.bin)
+        #print(self.msg.bin)
+
+        return self.msg.bin
 
 
 """Sample code to turn string into binary (helpful when taking in string)

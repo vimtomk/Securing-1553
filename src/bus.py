@@ -10,8 +10,6 @@ class Bus:
     # Initialize the queue "messages"
     def __init__(self):
         self.messages = queue.Queue()
-        # This acts as the Bus Montior
-        self.bus_monitor_data = list()
 
     # Return the queue as a list. This is helpful for when you want
     # to read something from the queue without removing an element.
@@ -21,7 +19,6 @@ class Bus:
     # Adds (push) a message to the queue and to the "BM"
     def add_message(self, msg):
         self.messages.put(msg)
-        self.bus_monitor_data.append(msg)
     
     # Returns (pops) a message from the queue
     def return_message(self):
@@ -41,9 +38,6 @@ class Bus:
     # programs.
     def is_empty(self):
         return self.messages.empty()
-            
-    def return_session_data(self):
-        return self.bus_monitor_data
 
     # Clear all messages on bus
     def clear_all(self):
