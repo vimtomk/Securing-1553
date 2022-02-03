@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
-from http.cookiejar import FileCookieJar
-from tracemalloc import start
 from message import message, command_word, data_word, status_word
-from bus import Bus, databus
+from bus import bus
+from rt import rt
 from time import sleep
 from bitstring import Bits, BitArray
-import queue
+from queue import Queue
 import time
 
 class bc(object):
@@ -23,8 +22,7 @@ class bc(object):
         self.rx             = BitArray(uint=0, length=0)  # Rx is a logic 0
         self.zero           = BitArray(uint=0, length=5)  # Zero in 5-bit long field
         self.thirty_one     = BitArray(uint=31, length=5) # Thirty-one is the max terminal count
-
-        
+        self.bus            = bus()                       # From now on, self.bus points to the shared data bus
 
         # Begin normal BC behavior
         self.main()
@@ -35,7 +33,7 @@ class bc(object):
 
     # Sends command word to the bus
     def issue_command_word(self, sendable_command_word):
-        databus.add_message(sendable_command_word)
+        self.bus.write_BitArray(sendable_command_word)
         return
 
     # Validates that a received status word has no errors
@@ -68,8 +66,10 @@ class bc(object):
     ## TODO: finish function
     # Craft data word
     def create_data_word(self, data):
-            
-        return 
+        
+        msg_out = data_word(data)
+
+        return msg_out
 
     ## TODO: Find out how to transmit command word to check on RT and then instantiate comms (reading now)
     
@@ -87,13 +87,21 @@ class bc(object):
             start_time = time.time()
             while (time.time() - start_time) < max_wait:
                 # Get most first message on the bus (front of queue)
-                tmp_msg = self.databus.return_first_message()
+                tmp_msg = self.read_message()
                 
                 # Check if message is type Status Word
                 if (int(tmp_msg.msg.bin[0:3], base=2) == 7):
                     # Check if status word from correct RT
                     if (int(tmp_msg.msg.bin[3:8], base=2) == rt):
-                        ## TODO: this part
+                        # If no parity error, then process message
+                        if (tmp_msg.msg.check_err()):
+                            return
+                        
+                        ## TODO: Check if we can do that
+                        # If there is a parity error, may want RT to resend
+                        else:
+                            print("Parity error!")
+                            return
                         return
 
                 # If message is not status word, wait a min and continue
@@ -103,26 +111,74 @@ class bc(object):
             
         return
 
+    ## TODO: Finish this function
     # Creates a message block that syhcronizes RTs to communicate
-    def synchronize(self):
+    def synchronize(self, tx_RT, rx_RT):
 
-        #One RT must be set to send while the other must be set to transmit
+        #One RT must be set to send while the other must be set to transmit 
+        transmit_RT     =   self.create_command_word(tx_RT, 1, 0, 17)
+        receive_RT      =   self.create_command_word(rx_RT, 0, 0, 17)
         
-        self.create_command_word(rt, 0, 0, 17)
-        # Sychronize Command Word will be added to the bus here
+        # The command words should be followed with a data word that tells the RT
+        # the specific RT it needs to sychronize with
+        transmit_RT_data = self.create_data_word(rx_RT) # Should include the RT number that is receiving
+        receive_RT_data = self.create_data_word(tx_RT)  # Should include the RT number that is transmitting
+        
+        # BC -> rx_RT : (from BC) Command_word -> (from BC) Data_Word -> (from rx_BC) Status_word
+        # BC -> tx_RT : (from BC) Command_word -> (from BC) Data_Word -> (from tx_BC) Status_word
+        # tx_RT and rx_BT should now be sychronized to send messages between one another
+        
+        # TODO: Check to see if bus is empty before sending messages
+        
+        while(1):
+            if(bus.is_empty == True):
+                bus.write_BitArray(transmit_RT)
+                sleep(1)
+            else:
+                pass
+            self.bus.write_BitArray(transmit_RT_data)
+            sleep(1)
+            tmp_msg = self.read_message()
+            
+            if (int(tmp_msg.msg.bin[0:3], base=2) == 7):
+                break
+            else:
+                    sleep(0.001)
+                    continue
 
-        self.create_data_word()
-
+        while(1):
+            bus.write_BitArray(receive_RT)
+            sleep(1)
+            bus.write_BitArray(receive_RT_data)
+            sleep(1)
+            tmp_msg = self.read_message()
+            
+            if (int(tmp_msg.msg.bin[0:3], base=2) == 7):
+                break
+            else:
+                    sleep(0.001)
+                    continue
+              
         return
 
-    
+    # Read message from bus (20 bits)
+    def read_message(self):
+        tmp = self.bus.read_BitArray()
+        return tmp
 
+    # Read data bit from bus
+    def read_bit(self, bit_pos):
+        tmp = self.bus.read_bit(bit_pos)
+        return tmp
+
+    # Write message to bus (20 bits BitArray)
+    def write_message(self, msg):
+        self.bus.write_BitArray(msg)
+
+
+    ## TODO: Actually figure out the logic of the bus running
     def main(self):
-        self.databus = Bus()
-        # Await some command
-    
-
-
+        pass
 
     # BC Destructor
     def __del__(self):

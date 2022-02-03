@@ -56,6 +56,14 @@ class message(object):
     def print_parity_bit(self):
         print(self.parity_bit.bin)
 
+    # Check if there is error in message
+    def check_err(self):
+        # Calculate parity and compare it to the current parity bit
+        if (BitArray(uint=(self.msg.count(1)) % 2 == 0, length=1) and self.msg.parity_bit.bin):
+            return False
+        else:
+            return True
+
     # Destructor
     def __del__(self):
         del(self)
@@ -198,3 +206,14 @@ bs  = Bits('0b'+(''.join(format(i, '08b') for i in bytearray(str, encoding='utf-
 bs.bin
 """
 
+# Explanation of each message type, all are 20 bits
+#-----------
+#-Data-Word-
+#-----------
+# Type | Data             | Parity
+# 000  | 0000000000000000 | 0
+#--------------
+#-Command-Word-
+#--------------
+# Type |              | Parity
+# 000  | 0000000000000000 | 0

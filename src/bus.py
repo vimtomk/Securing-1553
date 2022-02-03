@@ -1,51 +1,96 @@
 #!/usr/bin/env python3
 
+# This file defines the "bus" class and its functionality
 
-import queue
+from bitstring import BitArray 
 
-# This class acts as a queue of messages, which is how data would be
-# handled on a bus.
-class Bus:
+class bus(object):
+    # Bus is a singleton, all terminals should access this and ONLY this bus. Enforce through modified "__new__"
+    def __new__(cls):
+        '''Overrides the normal __new__ to ensure this object is the one and only instance'''
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(bus, cls).__new__(cls)
+        return cls.instance
 
-    # Initialize the queue "messages"
     def __init__(self):
-        self.messages = queue.Queue()
+        '''Initializes the bus, and all values are cleared by default'''
+        self.__dA9tA9mA6nG0lE9dd = BitArray('0x00000') # 20 bits of '0'
+        # Bus values SHOULD ONLY BE ACCESSED THROUGH FUNCTIONS.
+        # Python doesn't allow private variables, so the name is mangled to discourage direct access.
 
-    # Return the queue as a list. This is helpful for when you want
-    # to read something from the queue without removing an element.
-    def to_list(self):
-        return list(self.messages.queue)
-    
-    # Adds (push) a message to the queue and to the "BM"
-    def add_message(self, msg):
-        self.messages.put(msg)
-    
-    # Returns (pops) a message from the queue
-    def return_message(self):
-        return self.messages.get()
+    # PREFERRED WAY TO READ FROM BUS!
+    def read_bit(self, pos):
+        '''Returns a 1 or 0, from a position 0-19 on the bus. 
+        Call multiple times to be more accurate to the real way bus data is recieved.'''
+        if( ( pos < 0 ) or (19 < pos ) ):
+            return # Some mistake was made in calling this function, do nothing.
+        return int(self.__dA9tA9mA6nG0lE9dd[pos])
 
-    # Return first message without popping
-    def return_first_message(self):
-        return(self.messages.queue[0])
+    # PREFERRED WAY TO WRITE TO BUS!
+    def write_bit(self, val, pos):
+        '''Takes a 1 or 0, and overwrites a position 0-19 on the bus. 
+        Call multiple times to be more accurate to the real way bus data is sent.'''
+        if( ( pos < 0 ) or (19 < pos ) or ( val < 0 ) or ( 1 < val) ):
+            return # Some mistake was made in calling this function, do nothing.
+        self.__dA9tA9mA6nG0lE9dd[pos] = val
+        return
 
-    # Takes in a list as what is on the bus(enables MITM)
-    def mitm_message(self, lst):
-        # Clear the message queue and replace with provided list
-        self.messages.queue.clear()
-        [self.messages.put(msg) for msg in lst]
-    
-    # Returns bool if bus is empty. Good for error handling in other
-    # programs.
+    # Fast, easy way to read from bus. Good for logging after bus data is all in place.
+    def read_BitArray(self):
+        '''Gets the data in the bus, and returns it ALL AT ONCE as a BitArray'''
+        return self.__dA9tA9mA6nG0lE9dd
+
+    # Fast, easy way to write to bus. Fine when digit-by-digit transmission accuracy isn't important.
+    def write_BitArray(self, in_data):
+        '''Takes in a BitArray, and overwrites bus data ALL AT ONCE'''
+        if(len(in_data) != 20):
+            return # Not an array of length 20, do not write!
+        for value in in_data:
+            if not ( (in_data[value] == True) or (in_data[value] == False) ):
+                return # Not a BitArray, do not write!
+        self.__dA9tA9mA6nG0lE9dd = in_data
+        return
+
+    # Quick way to tell if bus is empty for if statements
     def is_empty(self):
-        return self.messages.empty()
+        '''Returns a TRUE if the bus is all 0s, returns FALSE otherwise'''
+        if (self.read_bit(0) == 0):
+            return True
+        else:
+            return False
 
-    # Clear all messages on bus
-    def clear_all(self):
-        self.messages.queue.clear()
-
-    # Delete the instance for good memory management.
+    # Destructor. Just deletes the object - DO NOT USE UNTIL EXITING SIMULATION!
     def __del__(self):
         del(self)
 
-# Create instance of Bus to use throughout the program
-databus = Bus()
+#bus = bus() # Un-comment to initialize the bus on import, usually not needed
+
+# Example of the class in action that you can try in console:
+# Setup
+#   from bus import bus
+#   from bitstring import BitArray
+#   bus = bus()
+# Reading pt. 1 - Demonstrating reading the bus all at once
+#   print(bus.read_BitArray())
+#   print(bus.read_BitArray().bin)
+# Writing pt. 1 - Demonstrating writing the bus all at once
+#   bus.write_BitArray(BitArray('0x12345'))
+#   print(bus.read_BitArray())
+#   print(bus.read_BitArray().bin)
+# Writing pt. 2 - Demonstrating writing the bus bit by bit
+#   bus.write_bit(1, 0)
+#   bus.write_bit(1, 1)
+#   bus.write_bit(1, 2)
+#   bus.write_bit(1, 3)
+#   bus.write_bit(0, 4)
+#   bus.write_bit(0, 5)
+#   bus.write_bit(0, 6)
+#   bus.write_bit(0, 7)
+#   print(bus.read_BitArray().bin)
+# Note: This can write the whole bus bit-by-bit with a for() loop iterating from 0 to 19
+# Reading pt. 2 - 
+#   bus.read_bit(0)
+#   bus.read_bit(1)
+#   bus.read_bit(4)
+#   bus.read_bit(5)
+# Note: This can read the whole bus bit-by-bit with a for() loop iterating from 0 to 19

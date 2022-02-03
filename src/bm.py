@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from bus import databus
+from bus import bus
 from time import sleep
 from datetime import datetime
 from bitstring import BitArray
@@ -20,6 +20,7 @@ class bm(object):
         self.tmp_message        = None                              # Holds the message being processed
         self.last_message       = None                              # Keeps track of the last message on the bus, to see if it changed
         # Begin normal BM behavior
+        self.bus = bus()
         self.main()
 
     # BM Constructor, with filename pre-defined by function input
@@ -38,6 +39,7 @@ class bm(object):
         elif(self.current_filename[-5:] != '.json'):
             self.current_filename.append('.json')
         # Begin normal BM behavior
+        self.bus = bus()
         self.main()
 
     # Returns the terminal number of the BC
@@ -55,7 +57,7 @@ class bm(object):
     def record_bus_contents(self):
         '''This will get the contents of the bus and record it every so often'''
         threading.Timer(self.frequency, self.record_bus_contents).start()
-        self.tmp_message = databus.return_first_message()
+        self.tmp_message = bus.read_BitArray()
         # Is there anything new on the bus?
         if(self.tmp_message == self.last_message):
             # Nothing new to log, ignore what is on the bus
@@ -64,7 +66,9 @@ class bm(object):
         bus_event = {}
         bus_event["Message"] = self.tmp_message
         self.addtime(bus_event)
+
         pass #TODO:Add code to log a message from the bus
+
         # Keep a temporary copy of the last message for future comparisons
         self.last_message = self.tmp_message
         return
