@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 # This file reads in data from a .csv file and uses it to send data across the bus in an automated fashion
-import socket
 import os
 import sys
 import time

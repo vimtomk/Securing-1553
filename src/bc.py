@@ -83,7 +83,7 @@ class bc(object):
             # Now wait a second and listen for message on bus
             sleep(1)
             # Wait no longer than 10 seconds
-            max_wait   = int(10)
+            max_wait   = int(1)
             start_time = time.time()
             while (time.time() - start_time) < max_wait:
                 # Get most first message on the bus (front of queue)
@@ -124,40 +124,60 @@ class bc(object):
         transmit_RT_data = self.create_data_word(rx_RT) # Should include the RT number that is receiving
         receive_RT_data = self.create_data_word(tx_RT)  # Should include the RT number that is transmitting
         
-        # BC -> rx_RT : (from BC) Command_word -> (from BC) Data_Word -> (from rx_BC) Status_word
-        # BC -> tx_RT : (from BC) Command_word -> (from BC) Data_Word -> (from tx_BC) Status_word
+        # 1. BC -> rx_RT : (from BC) Command_word -> (from BC) Data_Word -> (from rx_BC) Status_word
+        # 2. BC -> tx_RT : (from BC) Command_word -> (from BC) Data_Word -> (from tx_BC) Status_word
         # tx_RT and rx_BT should now be sychronized to send messages between one another
         
-        # TODO: Check to see if bus is empty before sending messages
-        
+      
+        # This while loop executes step (1) above
         while(1):
             if(bus.is_empty == True):
-                bus.write_BitArray(transmit_RT)
-                sleep(1)
+                self.write_message(transmit_RT) # Command Word
+                sleep(0.5)
             else:
-                pass
-            self.bus.write_BitArray(transmit_RT_data)
-            sleep(1)
-            tmp_msg = self.read_message()
-            
-            if (int(tmp_msg.msg.bin[0:3], base=2) == 7):
-                break
-            else:
-                    sleep(0.001)
-                    continue
+                sleep(0.5)
+                continue
 
-        while(1):
-            bus.write_BitArray(receive_RT)
-            sleep(1)
-            bus.write_BitArray(receive_RT_data)
-            sleep(1)
-            tmp_msg = self.read_message()
+            if(bus.is_empty == True):
+
+                self.write_message(transmit_RT_data) # Data Word
+                sleep(0.5)
+            else:
+                sleep(0.5)
+                continue
+
+            tmp_msg = self.read_message() # Read Status Word from Bus
             
             if (int(tmp_msg.msg.bin[0:3], base=2) == 7):
                 break
             else:
-                    sleep(0.001)
-                    continue
+                sleep(0.5)
+                continue
+
+        # This while loop executes step (2) above
+        while(1):
+            
+            if (bus.is_empty == True):
+                self.write_message(receive_RT) # Command Word
+                sleep(0.5)
+            else:
+                sleep(0.5)
+                continue
+            
+            if (bus.is_empty == True):
+                self.write_message(receive_RT_data) # Data Word
+                sleep(0.5)
+            else:
+                sleep(0.5)
+                continue
+            
+            tmp_msg = self.read_message() # Read Status Word from Bus
+            
+            if (int(tmp_msg.msg.bin[0:3], base=2) == 7):
+                break
+            else:
+                sleep(0.5)
+                continue
               
         return
 

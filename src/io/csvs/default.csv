@@ -1,2 +1,8 @@
-Send this message.,1,0,0
-And this one too!,10,1,.2
+7   # BCNO
+3,  # RTCOUNT, RTNO1, RTNO2
+1,  # SECONDSINTERVAL
+10, 7, '10100000000000000001' # RT/BCNO, MESSAGE
+
+
+Maybe this?
+interval_to_run(delay), rt/bc_to_act, message_to_send
