@@ -7,6 +7,8 @@ from time import sleep
 from bitstring import Bits, BitArray
 from queue import Queue
 import time
+import random
+from encryptor import DHKE
 
 class bc(object):
     # BC Constructor
@@ -23,6 +25,7 @@ class bc(object):
         self.zero           = BitArray(uint=0, length=5)  # Zero in 5-bit long field
         self.thirty_one     = BitArray(uint=31, length=5) # Thirty-one is the max terminal count
         self.bus            = bus()                       # From now on, self.bus points to the shared data bus
+        self.RT_keys        = {}                          # A dictionary that holds the RT keys for DHKE
 
         # Begin normal BC behavior
         self.main()
@@ -203,3 +206,31 @@ class bc(object):
     # BC Destructor
     def __del__(self):
         del(self)
+
+
+    ## TODO: Create a function for sending and receiving keys from BC to RT
+
+    def key_schronization(self):
+
+        self.public_key = random.randint(1,100)
+        self.private_key = random.randint(1,100)
+
+        for rt in self.rt_list:
+            sendkeysmsg = self.create_command_word(rt, 1, 0, 0)
+            self.write_message(sendkeysmsg)
+            sleep(1)
+
+            tmp_msg = self.read_message()
+
+            if (int(tmp_msg.msg.bin[0:3], base=2) == 6):
+
+                self.RT_keys[str(rt)]       =    int(tmp_msg.msg.bin[3:])
+                sleep(1)
+                
+            
+    
+
+
+
+
+        pass

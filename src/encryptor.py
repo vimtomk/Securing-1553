@@ -12,8 +12,8 @@ class DHKE(object):
 
 
     def generate_partial_key(self):
-        partial_key = self.public_key1 ** self.private_key
-        partial_key = partial_key % self.public_key2 
+        self.partial_key = self.public_key1 ** self.private_key
+        self.partial_key = partial_key % self.public_key2 
         return partial_key
 
 

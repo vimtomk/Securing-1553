@@ -19,9 +19,9 @@ def executeonce(threadid, msg, delay):
     rt_addr = threadid - 1
     if (rt_addr >= 32):
     	# 1553 only supports up to 32 RTs
-    	sys.exit(0)
+        sys.exit(0)
     if (rt_addr < 10):
-    	arg1 = "0" + str(rt_addr)
+        arg1 = "0" + str(rt_addr)
     else:
         arg1 = str(rt_addr)
     Bus_Controller().send_data_to_rt(arg1, "01", msg)
@@ -33,9 +33,9 @@ def loopexecute(threadid, msg, delay, frequency):
     rt_addr = threadid - 1
     if (rt_addr >= 32):
     	# 1553 only supports up to 32 RTs
-    	sys.exit(0)
+        sys.exit(0)
     if (rt_addr < 10):
-    	arg1 = "0" + str(rt_addr)
+        arg1 = "0" + str(rt_addr)
     sec_delay = float(1) // frequency
     while True:
         time.sleep(sec_delay)
@@ -75,7 +75,7 @@ for msg in msglines:
     else:
     	# Pass to function that executes in a loop
     	#print("Message executes in a loop of frequency " + parsed[3] + " Hz.") ###DEBUG#LINE###
-    	t = Thread(target=loopexecute, args=(tid, parsed[0], float(parsed[1]), float(parsed[3])))
+        t = Thread(target=loopexecute, args=(tid, parsed[0], float(parsed[1]), float(parsed[3])))
     threads.append(t)
     t.start()
 
