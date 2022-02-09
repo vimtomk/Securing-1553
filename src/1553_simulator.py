@@ -50,11 +50,23 @@ def main():
     bus_controller  = bc.bc(bc_num)
     bus_monitor     = bm.bm(bm_num)
     remote_terminals = []
-    #TODO: iterate through rt_nums
-    # Run everything in try until interrupted by keyboard interrupt signal
-    try:
-        pass
+    for rt_num in rt_nums:
+        remote_terminals.append(rt.rt(int(rt_num)))
     
+    # Process the messages 
+    try:
+        while script.size != 0:
+            # Parse command by commas into fields
+            command = (script.pop(0)).split(",")
+            #TODO: Figure out how to command RTs and the BC to perform the actions coded in the command
+            for remote_terminal in remote_terminals:
+                if(remote_terminal.return_rt_num() == int(command[0])):
+                    # This RT/BC is the sender in this command
+                    # Cut off field for sender # before passing
+                    command.pop(0)
+                    # Pass instruction to RT
+                    pass
+
     # On Keyboard Interrupt, exit the program and deallocate memory
     except KeyboardInterrupt:
         ## TODO: Del everything we spawn

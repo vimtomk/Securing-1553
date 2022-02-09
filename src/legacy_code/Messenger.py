@@ -1,3 +1,4 @@
+'''
 #!/usr/bin/python3
 
 # This file reads in data from a .csv file and uses it to send data across the bus in an automated fashion
@@ -95,3 +96,4 @@ for msg in msglines:
 # - if looping, what frequency/how often?
 # For example, "This is a message.,1,0,0" is just sending the string "This is a message." after 1s with no loop.
 # Alternatively, "This is spam!,0,1,.5" is looping the message "This is spam!" at .5Hz, or once every 2 seconds.
+'''

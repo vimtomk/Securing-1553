@@ -1,3 +1,4 @@
+"""
 #!/usr/bin/python3
 
 # This file attempts to listen in on the communications of the MIL Bus and log activity in a .json file
@@ -71,3 +72,4 @@ if __name__ == "__main__":
     # Log incoming data
     logger_thread = threading.Thread(target=Bus_Logger().start_listener)
     logger_thread.start()
+"""

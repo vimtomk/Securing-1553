@@ -33,6 +33,8 @@ class rt(object):
         
         self.last_command_word  = BitArray(uint=0, length=16)   # Use to store last received command word
         
+        self.events             = []     # A list of events (str arrays) that come from 1553_simulator
+
         # Start listening immediately
         self.main()
 

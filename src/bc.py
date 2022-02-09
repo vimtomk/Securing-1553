@@ -27,6 +27,9 @@ class bc(object):
         self.bus            = bus()                       # From now on, self.bus points to the shared data bus
         self.RT_keys        = {}                          # A dictionary that holds the RT keys for DHKE
 
+        # Instantiate the queues that store events (sequences of messages to be sent)
+        self.events         = []                          # A list of events from 1553_simulator
+
         # Begin normal BC behavior
         self.main()
 
@@ -69,9 +72,7 @@ class bc(object):
     ## TODO: finish function
     # Craft data word
     def create_data_word(self, data):
-        
         msg_out = data_word(data)
-
         return msg_out
 
     ## TODO: Find out how to transmit command word to check on RT and then instantiate comms (reading now)
@@ -215,21 +216,38 @@ class bc(object):
         self.public_key = random.randint(1,100)
         self.private_key = random.randint(1,100)
 
+        string_array = []
+
         for rt in self.rt_list:
             sendkeysmsg = self.create_command_word(rt, 1, 0, 0)
             self.write_message(sendkeysmsg)
             sleep(1)
 
-            tmp_msg = self.read_message()
-
-            if (int(tmp_msg.msg.bin[0:3], base=2) == 6):
-
-                self.RT_keys[str(rt)]       =    int(tmp_msg.msg.bin[3:])
-                sleep(1)
+            while(1):
                 
-            
-    
+                # BC reads message off of the Bus
+                tmp_msg = self.read_message
+                
+                # If the word is a data word it appends the last byte to the public key string
+                if (int(tmp_msg.msg.bin[0:3], base=2) == 6):
+                
+                    # Create a string array that will hold the last byte of the data word (ASCII value of the integer)
 
+                    string_array.append((hex(tmp_msg.msg.bin[12:20])))
+                    sleep(1)
+                    continue
+
+                elif (int(tmp_msg.msg.bin[0:3], base=2) == 7):
+                    break
+
+
+            for str in string_array:
+                return
+            
+
+
+            
+        
 
 
 

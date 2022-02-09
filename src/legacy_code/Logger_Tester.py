@@ -1,3 +1,4 @@
+"""
 #!/usr/bin/python3
 
 # This file sends some messages across the bus at some staggered times, used to debug the Logger.py program.
@@ -32,3 +33,4 @@ if __name__ == "__main__":
         
     except KeyboardInterrupt:
         exit()
+"""
