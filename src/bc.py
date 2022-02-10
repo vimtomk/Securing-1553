@@ -9,6 +9,7 @@ from queue import Queue
 import time
 import random
 from encryptor import DHKE
+from collections import deque
 
 class bc(object):
     # BC Constructor
@@ -18,17 +19,18 @@ class bc(object):
         self.received_data  = list()    # A list of the received messages used in context to keep track of data needed for received status words
         self.rt_list        = rts       # Bus controller's known RTs, pass "rts" in as a list of values from 0-30 (31 reserved for broadcast)
         self.error          = 0         # Flag to indicate if there is a communications error
-        
+        self.init_bus       = 0         # Flag to indicate if bus has been initialised
+
         # Instantiate commonly-used constants
         self.tx             = BitArray(uint=1, length=1)  # Tx is a logic 1
         self.rx             = BitArray(uint=0, length=0)  # Rx is a logic 0
         self.zero           = BitArray(uint=0, length=5)  # Zero in 5-bit long field
         self.thirty_one     = BitArray(uint=31, length=5) # Thirty-one is the max terminal count
-        self.bus            = bus()                       # From now on, self.bus points to the shared data bus
+        self.databus        = bus()                       # From now on, self.bus points to the shared data bus
         self.RT_keys        = {}                          # A dictionary that holds the RT keys for DHKE
 
         # Instantiate the queues that store events (sequences of messages to be sent)
-        self.events         = []                          # A list of events from 1553_simulator
+        self.events         = deque()                     # A list of events from 1553_simulator
 
         # Begin normal BC behavior
         self.main()
@@ -39,7 +41,7 @@ class bc(object):
 
     # Sends command word to the bus
     def issue_command_word(self, sendable_command_word):
-        self.bus.write_BitArray(sendable_command_word)
+        self.databus.write_BitArray(sendable_command_word)
         return
 
     # Validates that a received status word has no errors
@@ -61,7 +63,27 @@ class bc(object):
         return self.error
         
     # Define other functions of a BC here
-
+    def queue_message(self, command):
+        '''Takes a command in from 1553_simulator.py and turns it into an event and queues it'''
+        tmp = []
+        # Set dst
+        if(command[0] < 10): # Pads a zero to keep string of length 4 if RT# is not double-digit
+            tmp[0] = "RT0" + str(command[0])
+        else:
+            tmp[0] = "RT" + str(command[0])
+        # Set loop flag
+        if(command[1]):
+            tmp[1] = "Y"
+        else:
+            tmp[1] = "N"
+        # Set frequency
+        tmp[2] = command[2]
+        # Set number occurences, remember that 0 means loop infinitely!
+        tmp[3] = command[3]
+        # Set message string
+        tmp[4] = command[4]
+        # Add event to queue
+        self.events.append(tmp)
 
     ## TODO: finish function
     # Craft command word
@@ -135,14 +157,14 @@ class bc(object):
       
         # This while loop executes step (1) above
         while(1):
-            if(bus.is_empty == True):
+            if(self.databus.is_empty == True):
                 self.write_message(transmit_RT) # Command Word
                 sleep(0.5)
             else:
                 sleep(0.5)
                 continue
 
-            if(bus.is_empty == True):
+            if(self.databus.is_empty == True):
 
                 self.write_message(transmit_RT_data) # Data Word
                 sleep(0.5)
@@ -161,14 +183,14 @@ class bc(object):
         # This while loop executes step (2) above
         while(1):
             
-            if (bus.is_empty == True):
+            if (self.databus.is_empty == True):
                 self.write_message(receive_RT) # Command Word
                 sleep(0.5)
             else:
                 sleep(0.5)
                 continue
             
-            if (bus.is_empty == True):
+            if (self.databus.is_empty == True):
                 self.write_message(receive_RT_data) # Data Word
                 sleep(0.5)
             else:
@@ -187,17 +209,17 @@ class bc(object):
 
     # Read message from bus (20 bits)
     def read_message(self):
-        tmp = self.bus.read_BitArray()
+        tmp = self.databus.read_BitArray()
         return tmp
 
     # Read data bit from bus
     def read_bit(self, bit_pos):
-        tmp = self.bus.read_bit(bit_pos)
+        tmp = self.databus.read_bit(bit_pos)
         return tmp
 
     # Write message to bus (20 bits BitArray)
     def write_message(self, msg):
-        self.bus.write_BitArray(msg)
+        self.databus.write_BitArray(msg)
 
 
     ## TODO: Actually figure out the logic of the bus running
@@ -208,47 +230,75 @@ class bc(object):
     def __del__(self):
         del(self)
 
+    ## TODO: Create functions for the optional broadcast transfers between BC and Specific RT's or Pair of RT's
 
-    ## TODO: Create a function for sending and receiving keys from BC to RT
-
-    def key_schronization(self):
-
-        self.public_key = random.randint(1,100)
-        self.private_key = random.randint(1,100)
-
-        string_array = []
-
+    # BC -> RT
+    def BC_RT_Transfer(self, rx_RT):
+        receive_RT      =   self.create_command_word(rx_RT, 0, 0, 17)
         for rt in self.rt_list:
-            sendkeysmsg = self.create_command_word(rt, 1, 0, 0)
-            self.write_message(sendkeysmsg)
-            sleep(1)
+            # send data words
+            return
+        #selected RT sends status word
+        return
 
-            while(1):
-                
-                # BC reads message off of the Bus
-                tmp_msg = self.read_message
-                
-                # If the word is a data word it appends the last byte to the public key string
-                if (int(tmp_msg.msg.bin[0:3], base=2) == 6):
-                
-                    # Create a string array that will hold the last byte of the data word (ASCII value of the integer)
+    # RT -> BC
+    #def RT_BC_Transfer(self):
 
-                    string_array.append((hex(tmp_msg.msg.bin[12:20])))
-                    sleep(1)
-                    continue
+    # RT -> RT
+    #def RT_RT_Transfer(self):
 
-                elif (int(tmp_msg.msg.bin[0:3], base=2) == 7):
-                    break
+    # Mode Command w/o Data Word
+    #def MC_without_DW(self):
 
+    # Mode Command w/ Data Word Transmit
+    #def MC_with_DW_TX(self):
+    
+    # Mode Command w/ Data Word Receive
+    #def MC_with_DW_RX(self):
 
-            for str in string_array:
-                return
-            
+    
 
+    ## TODO: Create a function for sending keys for sending BC's public key to each RT
+    ## A BC should first send a RT a Command Word telling it to receive, next Data Words will be sent by the BC containing BC's public key,
+    ## finally a RT should send a Status Word to acknowledge that it has received the Data Words.
 
-            
+    def send_public_key(self):
+
+        self.public_key = random.randint(1,65000)
+        self.private_key = random.randint(1,65000)
+
         
 
+        for rt in self.rt_list:
+            # BC create the command word telling the RT to receive two data words
+            sendkeysmsg = self.create_command_word(rt, 0, 0, 2)
+            
+            #BC writes the Command Word to the Bus
+            self.write_message(sendkeysmsg)
+            sleep(1)
+            
+            
+            while i < (sendkeysmsg.mode_code):
+                
+                # We need to break up the public key into two bytes so that one byte can be sent in each message preceeded by the message number
+                hex_byte_1 = hex(self.public_key)[4:]
+                hex_byte_2 = hex(self.public_key)[2:4]
+                
+                
+                
+                #data_word = self.create_data_word()
+
+                
+
+
+                i = i + 1
+                    
+                
+
+        
+
+
+    
 
 
         pass

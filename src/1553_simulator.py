@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from bus import bus
-import bc, rt, bm, os, sys
+import bc, rt, bm, os, sys, threading
 
 databus = bus()     # Points to the shared bus
 bc_num  = 0         # Terminal Number of the BC
@@ -53,7 +53,13 @@ def main():
     for rt_num in rt_nums:
         remote_terminals.append(rt.rt(int(rt_num)))
     
-    # Process the messages 
+    # Set everything to begin listening in periodically at the same time interval
+    threading.Timer(time_interval, bus_controller.read_message(time_interval)).start
+    threading.Timer(time_interval, bus_monitor.record_bus_contents(time_interval)).start
+    for remote_terminal in remote_terminals:
+        threading.Timer(time_interval, remote_terminal.read_message(time_interval)).start
+
+    # Process the messages
     try:
         while script.size != 0:
             # Parse command by commas into fields
@@ -62,10 +68,10 @@ def main():
             for remote_terminal in remote_terminals:
                 if(remote_terminal.return_rt_num() == int(command[0])):
                     # This RT/BC is the sender in this command
-                    # Cut off field for sender # before passing
+                    # Cut off field for sender terminal number before passing
                     command.pop(0)
                     # Pass instruction to RT
-                    pass
+                    remote_terminal.queue_message(command)
 
     # On Keyboard Interrupt, exit the program and deallocate memory
     except KeyboardInterrupt:

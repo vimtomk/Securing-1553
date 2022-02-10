@@ -5,6 +5,7 @@ from bus import bus
 from time import sleep
 from bitstring import Bits, BitArray
 import queue
+from collections import deque
 
 class rt(object):
     
@@ -12,28 +13,28 @@ class rt(object):
     def __init__(self, number):
         self.__init__(self)
         self.num                = BitArray(uint=number, length=5)
-        self.rx_tx_mode         = "none" # RT starts off cleared (not transmitting)
-                                         # and is set for transmit mode
+        self.rx_tx_mode         = "none"  # RT starts off cleared (not transmitting)
+                                          # and is set for transmit mode
         self.rx_tx_mode         = BitArray(uint=0, length=1) 
-        self.received_data      = list() # A list of the received messages used in context
-                                         # to keep track of data needed for sent status words.
-        self.message_error      = 0      # Error bit. Set when a word fails an RT validity test
+        self.received_data      = list()  # A list of the received messages used in context
+                                          # to keep track of data needed for sent status words.
+        self.message_error      = 0       # Error bit. Set when a word fails an RT validity test
             # Condition 1 : RT receives a word with an error
             # Condition 2 : RT expects a stream of data words, but there is a gap
             # Condition 3 : RT receives a command it does not have the functionality to execute
             # Condition 4 : RT somehow receives the wrong number of data words
-        self.instrumentation    = 0      # One bit flag, always 0 when transmitting a status word
-        self.service            = 0      # Service request bit. We will not use this functionality
-        self.broadcast_command  = 0      # Broadcast command bit.
-        self.busy               = 0      # Busy bit. Set if the BC commands the RT not to act
-        self.subsystem          = 0      # Indicates subsystem. We will not use this functionality
-        self.dynamic_bus        = 0      # Set if turned into a dynamic BC.
-        self.terminal           = 0      # Set if this RT has a problem. Cleared on resolution.
-        self.bus                = bus()  # From now on, self.bus points to the shared data bus
+        self.instrumentation    = 0       # One bit flag, always 0 when transmitting a status word
+        self.service            = 0       # Service request bit. We will not use this functionality
+        self.broadcast_command  = 0       # Broadcast command bit.
+        self.busy               = 0       # Busy bit. Set if the BC commands the RT not to act
+        self.subsystem          = 0       # Indicates subsystem. We will not use this functionality
+        self.dynamic_bus        = 0       # Set if turned into a dynamic BC.
+        self.terminal           = 0       # Set if this RT has a problem. Cleared on resolution.
+        self.bus                = bus()   # From now on, self.bus points to the shared data bus
         
         self.last_command_word  = BitArray(uint=0, length=16)   # Use to store last received command word
         
-        self.events             = []     # A list of events (str arrays) that come from 1553_simulator
+        self.events             = deque() # A list of events (str arrays) that come from 1553_simulator
 
         # Start listening immediately
         self.main()
@@ -208,8 +209,29 @@ class rt(object):
 
             # Databus is either empty, or we are done getting messages so sleep.
             sleep(0.25) # Currently configured : Check each quarter second.
- 
-
+    
+    def queue_message(self, command):
+        '''Takes a command in from 1553_simulator.py and turns it into an event and queues it'''
+        tmp = []
+        # Set dst
+        if(command[0] < 10): # Pads a zero to keep string of length 4 if RT# is not double-digit
+            tmp[0] = "RT0" + str(command[0])
+        else:
+            tmp[0] = "RT" + str(command[0])
+        # Set loop flag
+        if(command[1]):
+            tmp[1] = "Y"
+        else:
+            tmp[1] = "N"
+        # Set frequency
+        tmp[2] = command[2]
+        # Set number occurences, remember that 0 means loop infinitely!
+        tmp[3] = command[3]
+        # Set message string
+        tmp[4] = command[4]
+        # Add event to queue
+        self.events.append(tmp)
+    
     # RT Destructor
     def __del__(self):
         del(self)
