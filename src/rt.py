@@ -4,14 +4,14 @@ from message import message, command_word, data_word, status_word
 from bus import bus
 from time import sleep
 from bitstring import Bits, BitArray
-import queue
+import queue, threading
 from collections import deque
 
 class rt(object):
     
     # RT Constructor - number is to assign RT number
     def __init__(self, number):
-        self.__init__(self)
+
         self.num                = BitArray(uint=number, length=5)
         self.rx_tx_mode         = "none"  # RT starts off cleared (not transmitting)
                                           # and is set for transmit mode
@@ -30,14 +30,14 @@ class rt(object):
         self.subsystem          = 0       # Indicates subsystem. We will not use this functionality
         self.dynamic_bus        = 0       # Set if turned into a dynamic BC.
         self.terminal           = 0       # Set if this RT has a problem. Cleared on resolution.
-        self.bus                = bus()   # From now on, self.bus points to the shared data bus
+        self.databus            = bus()   # From now on, self.bus points to the shared data bus
         
         self.last_command_word  = BitArray(uint=0, length=16)   # Use to store last received command word
         
         self.events             = deque() # A list of events (str arrays) that come from 1553_simulator
 
         # Start listening immediately
-        self.main()
+        #self.main()
 
     # Returns the Remote Terminal ID number (0-31)
     def return_rt_num(self):
@@ -46,6 +46,22 @@ class rt(object):
     ## TODO: Generate key-pair when BC class finished
     def gen_key(self):
         return
+
+    def check_for_message(self):
+        tmp_msg = self.databus.read_BitArray()
+        #if ()
+
+    def read_message_timer(self, delay):
+        '''Version of read_message that loops execution indefinitely and makes use of any important messages'''
+        threading.Timer(delay, self.read_message_timer, [delay]).start()
+        writeTime = 0.0 ##TODO: Figure out the time to write to the bus from current time + 4/5 of delay
+        tmp = self.databus.read_BitArray()
+        #print(tmp) # Debug line
+        ##TODO: Add code to process the read in message (temp). This includes:
+        #-Telling if the message is the same as it was last read
+        #-Finding if the message is addressed to this device or is broadcast
+        #-If this device was meant to get the message, process it
+        #-If this device was meant to respond to the message, prepare a response
 
     ## TODO: Create a function that will process a given mode code from command words
     def process_mode_code(self, mode_code):
@@ -60,7 +76,7 @@ class rt(object):
             sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
                 0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
             # Add  status word to the databus
-            self.bus.write_BitArray(sendable_status_word)
+            self.databus.write_BitArray(sendable_status_word)
             return 
 
         elif (mode_code==BitArray(uint=3, length=5)):	# case 3:  Initiate Self Test |  No Data Word Associated
@@ -80,7 +96,7 @@ class rt(object):
             # Send status word
             sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
                 0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
-            self.bus.write_BitArray(sendable_status_word)
+            self.databus.write_BitArray(sendable_status_word)
             return
         
         elif (mode_code==BitArray(uint=7, length=5)):	# case 7:  Override Inhibit T/F bit  | No Data Word Associated
@@ -89,14 +105,14 @@ class rt(object):
             # Send status word
             sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
                 0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
-            self.bus.write_BitArray(sendable_status_word)
+            self.databus.write_BitArray(sendable_status_word)
             return
         
         elif (mode_code==BitArray(uint=8, length=5)):	# case 8:  Reset Remote Terminal | No Data Word Associated
             # Send status word FIRST
             sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
                 0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
-            self.bus.write_BitArray(sendable_status_word)
+            self.databus.write_BitArray(sendable_status_word)
             # Reset RT values to default
             self.rx_tx              = BitArray(uint=0, length=1)
             self.message_error      = BitArray(uint=0, length=1)
@@ -113,7 +129,7 @@ class rt(object):
             # Send status word FIRST
             sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
                 0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
-            self.bus.write_BitArray(sendable_status_word)
+            self.databus.write_BitArray(sendable_status_word)
             # Send data word containing bits 4-19 of the last command word this RT received, excluding mode code bits
             return
         
@@ -125,7 +141,7 @@ class rt(object):
         
         elif (mode_code==BitArray(uint=18, length=5)):	# case 18: Transmit Last Command Word | Data Word Associated
             sendable_data_word = data_word(self.last_command_word)
-            self.bus.write_BitArray(sendable_data_word)
+            self.databus.write_BitArray(sendable_data_word)
             return
         
         elif (mode_code==BitArray(uint=19, length=5)):  # case 19: Transmit Bit Word |  Data Word Associated
@@ -133,7 +149,7 @@ class rt(object):
             sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
                 0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
             
-            self.bus.write_BitArray(sendable_status_word)
+            self.databus.write_BitArray(sendable_status_word)
             
             sendable_data_word = data_word() #TODO: Set the paramaters of the data word
             
@@ -160,8 +176,8 @@ class rt(object):
             # i.e., understand what to do with the next message
 
             # Grabs first message from bus if bus not empty
-            if not(self.bus.is_empty()):
-                tmp_msg = self.bus.read_BitArray()
+            if not(self.databus.is_empty()):
+                tmp_msg = self.databus.read_BitArray()
                 
                 # Use RT method that passes bus queue to RT and processes the first message on the queue
                 if (tmp_msg.rt_addr == self.num) and (tmp_msg.msg_type.bin == "101"): # Command Word

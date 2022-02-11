@@ -54,10 +54,10 @@ def main():
         remote_terminals.append(rt.rt(int(rt_num)))
     
     # Set everything to begin listening in periodically at the same time interval
-    threading.Timer(time_interval, bus_controller.read_message(time_interval)).start
+    threading.Timer(time_interval, bus_controller.read_message_timer(time_interval)).start
     threading.Timer(time_interval, bus_monitor.record_bus_contents(time_interval)).start
     for remote_terminal in remote_terminals:
-        threading.Timer(time_interval, remote_terminal.read_message(time_interval)).start
+        threading.Timer(time_interval, remote_terminal.read_message_timer(time_interval)).start
 
     # Process the messages
     try:

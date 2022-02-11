@@ -6,8 +6,7 @@ from rt import rt
 from time import sleep
 from bitstring import Bits, BitArray
 from queue import Queue
-import time
-import random
+import time, random, threading
 from encryptor import DHKE
 from collections import deque
 
@@ -23,7 +22,7 @@ class bc(object):
 
         # Instantiate commonly-used constants
         self.tx             = BitArray(uint=1, length=1)  # Tx is a logic 1
-        self.rx             = BitArray(uint=0, length=0)  # Rx is a logic 0
+        self.rx             = BitArray(uint=0, length=1)  # Rx is a logic 0
         self.zero           = BitArray(uint=0, length=5)  # Zero in 5-bit long field
         self.thirty_one     = BitArray(uint=31, length=5) # Thirty-one is the max terminal count
         self.databus        = bus()                       # From now on, self.bus points to the shared data bus
@@ -137,80 +136,22 @@ class bc(object):
             
         return
 
-    ## TODO: Finish this function
-    # Creates a message block that syhcronizes RTs to communicate
-    def synchronize(self, tx_RT, rx_RT):
-
-        #One RT must be set to send while the other must be set to transmit 
-        transmit_RT     =   self.create_command_word(tx_RT, 1, 0, 17)
-        receive_RT      =   self.create_command_word(rx_RT, 0, 0, 17)
-        
-        # The command words should be followed with a data word that tells the RT
-        # the specific RT it needs to sychronize with
-        transmit_RT_data = self.create_data_word(rx_RT) # Should include the RT number that is receiving
-        receive_RT_data = self.create_data_word(tx_RT)  # Should include the RT number that is transmitting
-        
-        # 1. BC -> rx_RT : (from BC) Command_word -> (from BC) Data_Word -> (from rx_BC) Status_word
-        # 2. BC -> tx_RT : (from BC) Command_word -> (from BC) Data_Word -> (from tx_BC) Status_word
-        # tx_RT and rx_BT should now be sychronized to send messages between one another
-        
-      
-        # This while loop executes step (1) above
-        while(1):
-            if(self.databus.is_empty == True):
-                self.write_message(transmit_RT) # Command Word
-                sleep(0.5)
-            else:
-                sleep(0.5)
-                continue
-
-            if(self.databus.is_empty == True):
-
-                self.write_message(transmit_RT_data) # Data Word
-                sleep(0.5)
-            else:
-                sleep(0.5)
-                continue
-
-            tmp_msg = self.read_message() # Read Status Word from Bus
-            
-            if (int(tmp_msg.msg.bin[0:3], base=2) == 7):
-                break
-            else:
-                sleep(0.5)
-                continue
-
-        # This while loop executes step (2) above
-        while(1):
-            
-            if (self.databus.is_empty == True):
-                self.write_message(receive_RT) # Command Word
-                sleep(0.5)
-            else:
-                sleep(0.5)
-                continue
-            
-            if (self.databus.is_empty == True):
-                self.write_message(receive_RT_data) # Data Word
-                sleep(0.5)
-            else:
-                sleep(0.5)
-                continue
-            
-            tmp_msg = self.read_message() # Read Status Word from Bus
-            
-            if (int(tmp_msg.msg.bin[0:3], base=2) == 7):
-                break
-            else:
-                sleep(0.5)
-                continue
-              
-        return
-
     # Read message from bus (20 bits)
     def read_message(self):
         tmp = self.databus.read_BitArray()
         return tmp
+
+    
+    def read_message_timer(self, delay):
+        '''Version of read_message that loops execution indefinitely and makes use of any important messages'''
+        threading.Timer(delay, self.read_message_timer, [delay]).start()
+        tmp = self.databus.read_BitArray()
+        #print(tmp) # Debug line
+        ##TODO: Add code to process the read in message (temp). This includes:
+        #-Telling if the message is the same as it was last read
+        #-Finding if the message is addressed to this device or is broadcast
+        #-If this device was meant to get the message, process it
+        #-If this device was meant to respond to the message, prepare a response
 
     # Read data bit from bus
     def read_bit(self, bit_pos):
@@ -257,11 +198,10 @@ class bc(object):
     #def MC_with_DW_RX(self):
 
     
-
-    ## TODO: Create a function for sending keys for sending BC's public key to each RT
+    ## TODO Finish and create a way to create data word
+   
     ## A BC should first send a RT a Command Word telling it to receive, next Data Words will be sent by the BC containing BC's public key,
     ## finally a RT should send a Status Word to acknowledge that it has received the Data Words.
-
     def send_public_key(self):
 
         self.public_key = random.randint(1,65000)
@@ -271,34 +211,36 @@ class bc(object):
 
         for rt in self.rt_list:
             # BC create the command word telling the RT to receive two data words
-            sendkeysmsg = self.create_command_word(rt, 0, 0, 2)
+            sendkeysmsg = self.create_command_word(rt, 0, 0, 1)
             
             #BC writes the Command Word to the Bus
             self.write_message(sendkeysmsg)
             sleep(1)
             
+            # BC creates BitArray with its public key, creates a data word with the public key BitArray, then writes the data word to the Bus
+            data = BitArray(uint=self.public_key, length=16)            
+            public_key_dw       =      self.create_data_word(data)
+            self.write_message(public_key_dw)
+            sleep(1)
+
+            # BC reads a word off of the Bus, it should be the Status word from the RT saying it received the public key
+            rt_status_word      =     self.read_message()
+            self.validate_status_word(rt_status_word)
+            sleep(1)
+
+    ## TODO: finish method
+    ## A BC should first send a RT a Command Word telling it to transmit their public key, next the RT should send a status word followed by a data word containing its public key
+    def receive_public_key(self):
+
+        for rt in self.rt_list:
+            # BC creates a command word telling the RT to send its public key
             
-            while i < (sendkeysmsg.mode_code):
-                
-                # We need to break up the public key into two bytes so that one byte can be sent in each message preceeded by the message number
-                hex_byte_1 = hex(self.public_key)[4:]
-                hex_byte_2 = hex(self.public_key)[2:4]
-                
-                
-                
-                #data_word = self.create_data_word()
 
-                
-
-
-                i = i + 1
-                    
-                
-
-        
 
 
     
-
-
+    
+    
         pass
+
+
