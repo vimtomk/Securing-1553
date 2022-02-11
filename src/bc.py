@@ -234,13 +234,6 @@ class bc(object):
 
         for rt in self.rt_list:
             # BC creates a command word telling the RT to send its public key
-            
-
-
-
-    
-    
-    
-        pass
+            return
 
 
