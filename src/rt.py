@@ -57,8 +57,13 @@ class rt(object):
         writeTime = 0.0 ##TODO: Figure out the time to write to the bus from current time + 4/5 of delay
         tmp = self.databus.read_BitArray()
         #print(tmp) # Debug line
+        if(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 0): # If a data word 110
+            pass
+        elif(tmp[0] == 1 and tmp[1] == 0 and tmp[2] == 1): # If a command word 101
+            pass
+        elif(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 1): # If a status word 111
+            pass
         ##TODO: Add code to process the read in message (temp). This includes:
-        #-Telling if the message is the same as it was last read
         #-Finding if the message is addressed to this device or is broadcast
         #-If this device was meant to get the message, process it
         #-If this device was meant to respond to the message, prepare a response

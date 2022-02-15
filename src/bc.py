@@ -96,7 +96,7 @@ class bc(object):
         msg_out = data_word(data)
         return msg_out
 
-    ## TODO: Find out how to transmit command word to check on RT and then instantiate comms (reading now)
+    ## TODO: Find out how to transmit command word to check on RT and then instantiate comms
     
     ## TODO: Finish this function
     # For each rt on the bus, create a command word one at a time and wait for response (status check)
@@ -147,8 +147,13 @@ class bc(object):
         threading.Timer(delay, self.read_message_timer, [delay]).start()
         tmp = self.databus.read_BitArray()
         #print(tmp) # Debug line
+        if(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 0): # If a data word 110
+            pass
+        elif(tmp[0] == 1 and tmp[1] == 0 and tmp[2] == 1): # If a command word 101
+            pass
+        elif(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 1): # If a status word 111
+            pass
         ##TODO: Add code to process the read in message (temp). This includes:
-        #-Telling if the message is the same as it was last read
         #-Finding if the message is addressed to this device or is broadcast
         #-If this device was meant to get the message, process it
         #-If this device was meant to respond to the message, prepare a response
@@ -177,7 +182,7 @@ class bc(object):
     def BC_RT_Transfer(self, rx_RT):
         receive_RT      =   self.create_command_word(rx_RT, 0, 0, 17)
         for rt in self.rt_list:
-            # send data words
+            self.create_data_word()
             return
         #selected RT sends status word
         return
@@ -204,8 +209,15 @@ class bc(object):
     ## finally a RT should send a Status Word to acknowledge that it has received the Data Words.
     def send_public_key(self):
 
-        self.public_key = random.randint(1,65000)
-        self.private_key = random.randint(1,65000)
+        self.public_key = random.randint(1,  9223372036854775808)
+        self.private_key = random.randint(1, 9223372036854775808)
+
+        for char in len(str(self.public_key)):
+
+            hex(char)
+
+            pass
+
 
         
 
@@ -228,6 +240,9 @@ class bc(object):
             self.validate_status_word(rt_status_word)
             sleep(1)
 
+    
+    
+    
     ## TODO: finish method
     ## A BC should first send a RT a Command Word telling it to transmit their public key, next the RT should send a status word followed by a data word containing its public key
     def receive_public_key(self):
@@ -237,3 +252,4 @@ class bc(object):
             return
 
 
+# 0 should be the encryption key for the bus controller for each RT

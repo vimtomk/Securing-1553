@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from bitstring import Bits, BitArray
 
 class message(object):

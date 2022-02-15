@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from bus import bus
-import bc, rt, bm, os, sys, threading
+import bc, rt, bm, os, sys, threading#, time
 
 databus = bus()     # Points to the shared bus
 bc_num  = 0         # Terminal Number of the BC
@@ -47,11 +47,11 @@ def main():
     # Parse the .csv
     parse_csv()
     # Set up the bc, bm, and rts
-    bus_controller  = bc.bc(bc_num)
     bus_monitor     = bm.bm(bm_num)
     remote_terminals = []
     for rt_num in rt_nums:
         remote_terminals.append(rt.rt(int(rt_num)))
+    bus_controller  = bc.bc(bc_num, remote_terminals) # Bus controller is passed a list of pointers to all RT instances
     
     # Set everything to begin listening in periodically at the same time interval
     threading.Timer(time_interval, bus_controller.read_message_timer(time_interval)).start
@@ -62,16 +62,23 @@ def main():
     # Process the messages
     try:
         while script.size != 0:
+            #time.wait(time_interval) # Trickles out commands so they are not all sent at once
             # Parse command by commas into fields
             command = (script.pop(0)).split(",")
-            #TODO: Figure out how to command RTs and the BC to perform the actions coded in the command
-            for remote_terminal in remote_terminals:
-                if(remote_terminal.return_rt_num() == int(command[0])):
+            # Check if the BC needs to process this command
+            if(bus_controller.return_terminal_num() == int[command[0]]):
+                # The BC is meant to process this command
+                # Cut off field for sender terminal number before passing
+                command.pop(0)
+                bus_controller.queue_message(command)
+            # Check if any RT needs to process this command
+            for terminal in remote_terminals:
+                if(terminal.return_rt_num() == int(command[0])):
                     # This RT/BC is the sender in this command
                     # Cut off field for sender terminal number before passing
                     command.pop(0)
                     # Pass instruction to RT
-                    remote_terminal.queue_message(command)
+                    terminal.queue_message(command)
 
     # On Keyboard Interrupt, exit the program and deallocate memory
     except KeyboardInterrupt:
