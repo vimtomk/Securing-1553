@@ -4,7 +4,7 @@ from message import message, command_word, data_word, status_word
 from bus import bus
 from time import sleep
 from bitstring import Bits, BitArray
-import queue, threading
+import queue, threading, secrets
 from collections import deque
 
 class rt(object):
@@ -16,7 +16,7 @@ class rt(object):
         self.rx_tx_mode         = "none"  # RT starts off cleared (not transmitting)
                                           # and is set for transmit mode
         self.rx_tx_mode         = BitArray(uint=0, length=1) 
-        self.received_data      = list()  # A list of the received messages used in context
+        self.received_msgs      = list()  # A list of the received messages (as BitArray) used in context
                                           # to keep track of data needed for sent status words.
         self.message_error      = 0       # Error bit. Set when a word fails an RT validity test
             # Condition 1 : RT receives a word with an error
@@ -33,6 +33,7 @@ class rt(object):
         self.databus            = bus()   # From now on, self.bus points to the shared data bus
         
         self.last_command_word  = BitArray(uint=0, length=16)   # Use to store last received command word
+        self.dwords_expected    = 0       # A counter that keeps track of how many data words the terminal is still expecting to receive
         
         self.events             = deque() # A list of events (str arrays) that come from 1553_simulator
 
@@ -51,22 +52,41 @@ class rt(object):
         tmp_msg = self.databus.read_BitArray()
         #if ()
 
+    # Read message from bus (20 bits)
+    def read_message(self):
+        tmp = self.databus.read_BitArray()
+        return tmp
+
     def read_message_timer(self, delay):
         '''Version of read_message that loops execution indefinitely and makes use of any important messages'''
-        threading.Timer(delay, self.read_message_timer, [delay]).start()
-        writeTime = 0.0 ##TODO: Figure out the time to write to the bus from current time + 4/5 of delay
+        #threading.Timer(delay, self.read_message_timer, [delay]).start()
+        #writeTime = 0.0 ##TODO: Figure out the time to write to the bus from current time + ~4/5 of delay???
         tmp = self.databus.read_BitArray()
         #print(tmp) # Debug line
-        if(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 0): # If a data word 110
+        if(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 0 and (self.dwords_expected > 0)): # If a data word 110, and we are expecting a data word
+            print("Data Word received by RT#!" + self.num + "\nData is: " + chr(int(tmp.bin[3:11],2)) + chr(int(tmp.bin[11:19],2)))
+            self.dwords_expected = self.dwords_expected - 1
             pass
-        elif(tmp[0] == 1 and tmp[1] == 0 and tmp[2] == 1): # If a command word 101
-            pass
-        elif(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 1): # If a status word 111
+        elif((tmp.bin[3:8] == self.num.bin) or (tmp.bin[3:8] == '11111')): # If this is some other word meant for this terminal, or broadcast
+            if(tmp.bin[3:8] == '11111'):
+                print("This message was a broadcast!")
+                pass
+            if(tmp[0] == 1 and tmp[1] == 0 and tmp[2] == 1): # If a command word 101
+                print("Command Word received!\nMode code is: " + tmp.bin[14:19])
+                # Send the mode code to the processor function
+                self.process_mode_code(BitArray('0b' + tmp.bin[14:19]))
+                pass
+            elif(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 1): # If a status word 111
+                print("Status Word received!\nStatus was-\nError Flag: " + tmp.bin[8] + "\nService Request: " + tmp.bin[10] + "\nBusy bit: " + tmp.bin[15])
+                # RT to RT communication may have this RT receive a status word from another RT
+                pass
+        else: # This terminal was definitely not the intended recipient of the message
             pass
         ##TODO: Add code to process the read in message (temp). This includes:
         #-Finding if the message is addressed to this device or is broadcast
         #-If this device was meant to get the message, process it
         #-If this device was meant to respond to the message, prepare a response
+        ##TODO: Wherever a "pass" is in this function, there needs to be code that defines the terminal behavior in that situation...
 
     ## TODO: Create a function that will process a given mode code from command words
     def process_mode_code(self, mode_code):
@@ -85,6 +105,7 @@ class rt(object):
             return 
 
         elif (mode_code==BitArray(uint=3, length=5)):	# case 3:  Initiate Self Test |  No Data Word Associated
+            self.databus.write_BitArray(sendable_status_word)
             return
         
         elif (mode_code==BitArray(uint=4, length=5)):	# case 4:  Transmitter Shutdown  | No Data Word Associated
@@ -130,6 +151,48 @@ class rt(object):
             self.terminal           = BitArray(uint=0, length=1)
             return
         
+
+
+        elif (mode_code==BitArray(uint=9, length=5)):   # case 9: Receive Bus Controller Public Key | 4 Data Words Associated
+            # Send status word FIRST
+            sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
+                0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
+
+            data_word_list = []           
+            
+            for x in range(4):
+
+                data_word = self.read_message()
+                data_word_list.append(data_word.data)
+                sleep(1)
+
+            self.BC_public_key = int(str(data_word_list[0], data_word_list[1], data_word_list[2], data_word_list[3]), 16)    
+            
+            return
+            
+            
+
+
+        elif (mode_code==BitArray(uint=10, length=5)):   # case 10: Transmit Remote Terminal Public Key | 4 Data Words Associated
+            # Send status word FIRST
+            sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
+                0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
+            
+            sleep(1)
+
+            self.public_key = secrets.randbelow(9223372036854775808)
+            
+            full_public_key = BitArray(uint= self.public_key, length=64)
+            data_word_list = [full_public_key[:16], full_public_key[16:32], full_public_key[32:48], full_public_key[48:]]
+
+            for data_word in data_word_list:
+                    
+                public_key_dw       =      self.create_data_word(data_word)
+                self.write_message(public_key_dw)
+                sleep(1)
+                    
+                    
+          
         elif (mode_code==BitArray(uint=16, length=5)):	# case 16: Transmit Vector Word | Data Word Associated
             # Send status word FIRST
             sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \

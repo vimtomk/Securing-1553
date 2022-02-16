@@ -13,7 +13,7 @@ script = []         # Queue of information from input .csv
 def parse_csv():
     '''Parses out a .csv file into the initialization parameters and action script.
     The argument for the progrtam must be a .csv formatted properly, or nothing.
-    If the simulator is run without an argument, it runs default.csv from /io/csvs/'''
+    If the simulator is run without an argument, it runs a default script from /io/csvs/default.csv'''
     if (len(sys.argv) >= 3):
         print("Only one or zero arguments is accepted.")
         print("If no arguments, default file is read.")
