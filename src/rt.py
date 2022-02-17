@@ -18,11 +18,7 @@ class rt(object):
         self.rx_tx_mode         = BitArray(uint=0, length=1) 
         self.received_msgs      = list()  # A list of the received messages (as BitArray) used in context
                                           # to keep track of data needed for sent status words.
-        self.message_error      = 0       # Error bit. Set when a word fails an RT validity test
-            # Condition 1 : RT receives a word with an error
-            # Condition 2 : RT expects a stream of data words, but there is a gap
-            # Condition 3 : RT receives a command it does not have the functionality to execute
-            # Condition 4 : RT somehow receives the wrong number of data words
+            
         self.instrumentation    = 0       # One bit flag, always 0 when transmitting a status word
         self.service            = 0       # Service request bit. We will not use this functionality
         self.broadcast_command  = 0       # Broadcast command bit.
@@ -32,7 +28,15 @@ class rt(object):
         self.terminal           = 0       # Set if this RT has a problem. Cleared on resolution.
         self.databus            = bus()   # From now on, self.bus points to the shared data bus
         
-        self.last_command_word  = BitArray(uint=0, length=16)   # Use to store last received command word
+        self.rcvd_broadcast     = 0       # Flag to indicate if RT received broadcast message for Transmit Last Status Word
+        self.msg_err            = 0       # Flag to indicate if last received message from BC had an error
+                                          # Condition 1 : RT receives a word with an error
+                                          # Condition 2 : RT expects a stream of data words, but there is a gap
+                                          # Condition 3 : RT receives a command it does not have the functionality to execute
+                                          # Condition 4 : RT somehow receives the wrong number of data words
+        ##TODO: create function to set last_status_word as defined in 4.3.3.5.3
+        self.last_status_word   = BitArray(uint=0, length=20)   # Use to store last status word so we can transmit
+        self.last_command_word  = BitArray(uint=0, length=20)   # Use to store last received command word
         self.dwords_expected    = 0       # A counter that keeps track of how many data words the terminal is still expecting to receive
         
         self.events             = deque() # A list of events (str arrays) that come from 1553_simulator
@@ -48,10 +52,6 @@ class rt(object):
     def gen_key(self):
         return
 
-    def check_for_message(self):
-        tmp_msg = self.databus.read_BitArray()
-        #if ()
-
     # Read message from bus (20 bits)
     def read_message(self):
         tmp = self.databus.read_BitArray()
@@ -61,7 +61,7 @@ class rt(object):
         '''Version of read_message that loops execution indefinitely and makes use of any important messages'''
         #threading.Timer(delay, self.read_message_timer, [delay]).start()
         #writeTime = 0.0 ##TODO: Figure out the time to write to the bus from current time + ~4/5 of delay???
-        tmp = self.databus.read_BitArray()
+        tmp = self.read_message()
         #print(tmp) # Debug line
         if(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 0 and (self.dwords_expected > 0)): # If a data word 110, and we are expecting a data word
             print("Data Word received by RT#!" + self.num + "\nData is: " + chr(int(tmp.bin[3:11],2)) + chr(int(tmp.bin[11:19],2)))
@@ -245,7 +245,7 @@ class rt(object):
 
             # Grabs first message from bus if bus not empty
             if not(self.databus.is_empty()):
-                tmp_msg = self.databus.read_BitArray()
+                tmp_msg = self.read_message()
                 
                 # Use RT method that passes bus queue to RT and processes the first message on the queue
                 if (tmp_msg.rt_addr == self.num) and (tmp_msg.msg_type.bin == "101"): # Command Word
