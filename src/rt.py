@@ -38,6 +38,7 @@ class rt(object):
         self.last_status_word   = BitArray(uint=0, length=20)   # Use to store last status word so we can transmit
         self.last_command_word  = BitArray(uint=0, length=20)   # Use to store last received command word
         self.dwords_expected    = 0       # A counter that keeps track of how many data words the terminal is still expecting to receive
+        self.write_permission   = 0       # Flag indicating if this RT has permission to write to the bus or not
         
         self.events             = deque() # A list of events (str arrays) that come from 1553_simulator
 
@@ -56,11 +57,33 @@ class rt(object):
     def read_message(self):
         tmp = self.databus.read_BitArray()
         return tmp
+    
+    # Takes an event from the queue and turns it into an acutal sendable message
+    def event_to_word(event):
+        '''Takes an event and returns an actual 20-bit BitArray message corresponding to that event'''
+        if event[0] == "d": # This event is for a data word
+            if(event[2] == "Y"):
+                if(event[4] == 0):
+                    # Message repeats indefinitely, just add a copy to the queue
+                    threading.Timer(event[3], self.events.append, [event]).start()
+                elif(event[4] > 1):
+                    # Decrement number of messages remaining, and add next event to queue
+                    event[4] = event[4] - 1
+                    threading.Timer(event[3], self.events.append, [event]).start()
+            return self.create_data_word(int(event[5].bin, 2))
+        elif event[0] == "c": # This event is for a command word
+            # RTs should not be sending command words! Pass.
+            pass
+        elif event[0] == "s": # This event is for a status word
+            return message.status_word() ##TODO: Test how this works, and make sure a status word is correct.
+        #BitArray(uint=int(event[0][2:5]), length=5)
+        return
 
     def read_message_timer(self, delay):
         '''Version of read_message that loops execution indefinitely and makes use of any important messages'''
         #threading.Timer(delay, self.read_message_timer, [delay]).start()
-        #writeTime = 0.0 ##TODO: Figure out the time to write to the bus from current time + ~4/5 of delay???
+        writeTime = float(delay) - (float(delay)/float(5)) # Time near the end of cycle where the terminal should write if it needs to
+        #threading.Timer(writeTime, self.write_message_timer).start()
         tmp = self.read_message()
         #print(tmp) # Debug line
         if(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 0 and (self.dwords_expected > 0)): # If a data word 110, and we are expecting a data word
@@ -87,6 +110,14 @@ class rt(object):
         #-If this device was meant to get the message, process it
         #-If this device was meant to respond to the message, prepare a response
         ##TODO: Wherever a "pass" is in this function, there needs to be code that defines the terminal behavior in that situation...
+
+    def write_message_timer(self):
+        '''At the end of a time interval, this function is called and if the terminal has a need and the permissions
+        to write to the bus, it will do so.'''
+        if((self.write_permission == False) or (len(self.events) == 0)): # If there is no permission to write anything or nothing to write, return immediately.
+            return
+        self.databus.write_BitArray(self.event_to_word(self.events.pop()))
+        return
 
     ## TODO: Create a function that will process a given mode code from command words
     def process_mode_code(self, mode_code):

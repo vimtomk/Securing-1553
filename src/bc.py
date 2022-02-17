@@ -126,9 +126,10 @@ class bc(object):
                     threading.Timer(event[3], self.events.append, [event]).start()
             return self.create_data_word(int(event[5].bin, 2))
         elif event[0] == "c": # This event is for a command word
+            ##TODO: Define how an event for a command word is coded
             pass
         elif event[0] == "s": # This event is for a status word
-            pass
+            return self.create_status_word(self.num, self.error, 0, 0)
         #BitArray(uint=int(event[0][2:5]), length=5)
         return
 
