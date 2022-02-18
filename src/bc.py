@@ -265,15 +265,17 @@ class bc(object):
     ## immediately followed by 1 to 32 16-bit data words. 
     ## The selected Remote Terminal then sends a single 16-bit Status word.
     def BC_RT_Transfer(self, rt_num_rx, msg_count, data):
-        tmp_msg_rx  = self.create_command_word(rt_num_rx, 0, self.zero, msg_count)
-        rx_msg_sent = self.issue_command_word(tmp_msg_rx)
+        # Create and issue the command word for the receiving RT
+        tmp_msg_rx     = self.create_command_word(rt_num_rx, 0, self.zero, msg_count)
+        self.issue_command_word(tmp_msg_rx)
+        # Create and issue 1 to 32 16-bit data words
         for rt in self.rt_list:
-            data_word      = self.create_data_word(data)
-            data_word_sent = self.issue_data_word(data_word)
+            data_word  = self.create_data_word(data)
+            self.issue_data_word(data_word)
             return
-        ## TODO: finish filling out create_status_word() attributes
-        rt_status        = self.create_status_word(rt_num_rx, rt_num_rx.msg_err, rt_num_rx.rcvd_broadcast, rt_num_rx.dynamic_bus)
-        status_word_sent = self.issue_status_word(rt_status)
+        # Create and issue the status word from the receiving RT
+        rt_status      = self.create_status_word(rt_num_rx, rt_num_rx.msg_err, rt_num_rx.rcvd_broadcast, rt_num_rx.dynamic_bus)
+        self.issue_status_word(rt_status)
         return
 
     # RT -> BC
@@ -282,14 +284,16 @@ class bc(object):
     ## The Remote Terminal then sends a single Status word 
     ## immediately followed by 1 to 32 words.
     def RT_BC_Transfer(self, rt_num_tx, msg_count, data):
-        tmp_msg_tx  =   self.create_command_word(rt_num_tx, 1, self.zero, msg_count)
+        # Create and issue the command word for the transmitting RT
+        tmp_msg_tx     =  self.create_command_word(rt_num_tx, 1, self.zero, msg_count)
         self.issue_command_word(tmp_msg_tx)
-        ## TODO: finish filling out create_status_word() attributes
-        rt_status         = self.create_status_word(rt_num_tx, rt_num_tx.msg_err, rt_num_tx.rcvd_broadcast, rt_num_tx.dynamic_bus)
-        status_word_sent  = self.issue_status_word(rt_status)
+        # Create and issue the status word from the transmitting RT
+        rt_status      =  self.create_status_word(rt_num_tx, rt_num_tx.msg_err, rt_num_tx.rcvd_broadcast, rt_num_tx.dynamic_bus)
+        self.issue_status_word(rt_status)
+        # Create and issue 1 to 32 16-bit data words
         for rt in self.rt_list:
-            data_word      = self.create_data_word(data)
-            data_word_sent = self.issue_data_word(data_word)
+            data_word  = self.create_data_word(data)
+            self.issue_data_word(data_word)
             return
         return
 
@@ -302,20 +306,23 @@ class bc(object):
     ## immediately followed by 1 to 32 data words. 
     ## The receiving Terminal then sends its Status word.
     def RT_RT_Transfer(self, rt_num_rx, rt_num_tx, msg_count, data):
-        tmp_msg_rx  =  self.create_command_word(rt_num_rx, 0, self.zero, msg_count)
-        rx_msg_sent =  self.issue_command_word(tmp_msg_rx)
-        tmp_msg_tx  =  self.create_command_word(rt_num_tx, 1, self.zero, msg_count)
-        tx_msg_sent =  self.issue_command_word(tmp_msg_rx)
-        ## TODO: finish filling out create_status_word() attributes
-        rt_status_tx         = self.create_status_word(rt_num_tx, rt_num_tx.msg_err, rt_num_tx.rcvd_broadcast, rt_num_tx.dynamic_bus)
-        tx_status_word_sent  = self.issue_status_word(rt_status_tx)
+        # Create and issue the command word for the receiving RT
+        tmp_msg_rx    =  self.create_command_word(rt_num_rx, 0, self.zero, msg_count)
+        self.issue_command_word(tmp_msg_rx)
+        # Create and issue the command word for the transmitting RT
+        tmp_msg_tx    =  self.create_command_word(rt_num_tx, 1, self.zero, msg_count)
+        self.issue_command_word(tmp_msg_rx)
+        # Create and issue the status word from the transmitting RT
+        rt_status_tx  = self.create_status_word(rt_num_tx, rt_num_tx.msg_err, rt_num_tx.rcvd_broadcast, rt_num_tx.dynamic_bus)
+        self.issue_status_word(rt_status_tx)
+        # Create and issue 1 to 32 16-bit data words
         for rt in self.rt_list:
-            data_word      = self.create_data_word(data)
-            data_word_sent = self.issue_data_word(data_word)
+            data_word = self.create_data_word(data)
+            self.issue_data_word(data_word)
             return
-        ## TODO: finish filling out create_status_word() attributes
-        rt_status_rx         = self.create_status_word(rt_num_rx, rt_num_rx.msg_err, rt_num_rx.rcvd_broadcast, rt_num_rx.dynamic_bus)
-        rx_status_word_sent  = self.issue_status_word(rt_status_rx)
+        # Create and issue the status word from the receiving RT
+        rt_status_rx  = self.create_status_word(rt_num_rx, rt_num_rx.msg_err, rt_num_rx.rcvd_broadcast, rt_num_rx.dynamic_bus)
+        self.issue_status_word(rt_status_rx)
         return
          
 
