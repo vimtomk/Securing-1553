@@ -30,10 +30,10 @@ class rt(object):
         
         self.rcvd_broadcast     = 0       # Flag to indicate if RT received broadcast message for Transmit Last Status Word
         self.msg_err            = 0       # Flag to indicate if last received message from BC had an error
-                                          # Condition 1 : RT receives a word with an error
-                                          # Condition 2 : RT expects a stream of data words, but there is a gap
-                                          # Condition 3 : RT receives a command it does not have the functionality to execute
-                                          # Condition 4 : RT somehow receives the wrong number of data words
+                                          # Condition 1 : RT receives a word with an error (parity)
+                                          # Condition 2 : RT expects a stream of data words, but there is a gap (a cycle is missed getting the next data word)
+                                          # Condition 3 : RT receives a command it does not have the functionality to execute (unimplemented mode code)
+                                          # Condition 4 : RT somehow receives the wrong number of data words (missing data words, extra data words)
         ##TODO: create function to set last_status_word as defined in 4.3.3.5.3
         self.last_status_word   = BitArray(uint=0, length=20)   # Use to store last status word so we can transmit
         self.last_command_word  = BitArray(uint=0, length=20)   # Use to store last received command word
@@ -59,7 +59,7 @@ class rt(object):
         return tmp
     
     # Takes an event from the queue and turns it into an acutal sendable message
-    def event_to_word(event):
+    def event_to_word(self, event):
         '''Takes an event and returns an actual 20-bit BitArray message corresponding to that event'''
         if event[0] == "d": # This event is for a data word
             if(event[2] == "Y"):
@@ -327,7 +327,9 @@ class rt(object):
     
     def queue_message(self, command):
         '''Takes a command in from 1553_simulator.py and turns it into an event and queues it'''
-        tmp = []
+        #TODO: Re-write / modify this function to correctly handle queueing events given the new requirements and format of inputs
+        pass
+        '''tmp = []
         # Set dst
         if(command[0] < 10): # Pads a zero to keep string of length 4 if RT# is not double-digit
             tmp[0] = "RT0" + str(command[0])
@@ -345,7 +347,7 @@ class rt(object):
         # Set message string
         tmp[4] = command[4]
         # Add event to queue
-        self.events.append(tmp)
+        self.events.append(tmp)'''
     
     # RT Destructor
     def __del__(self):

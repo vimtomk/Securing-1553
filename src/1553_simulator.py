@@ -42,7 +42,6 @@ def parse_csv():
     # The rest of script[] should contain only the messages portion
     return
 
-
 def main():
     # Parse the .csv
     parse_csv()
@@ -61,11 +60,12 @@ def main():
 
     # Process the messages
     try:
-        while script.size != 0:
+        while(script.size != 0):
             #time.wait(time_interval) # Trickles out commands so they are not all sent at once
             # Parse command by commas into fields
             command = (script.pop(0)).split(",")
-            # Check if the BC needs to process this command
+            #TODO: Double-check this code to make sure it correctly takes all events from the .csv and passes them as formatted events to the appropriate entities
+            '''# Check if the BC needs to process this command
             if(bus_controller.return_terminal_num() == int[command[0]]):
                 # The BC is meant to process this command
                 # Cut off field for sender terminal number before passing
@@ -73,12 +73,15 @@ def main():
                 bus_controller.queue_message(command)
             # Check if any RT needs to process this command
             for terminal in remote_terminals:
-                if(terminal.return_rt_num() == int(command[0])):
+                if(terminal.return_rt_num() == int(command[1])):
                     # This RT/BC is the sender in this command
-                    # Cut off field for sender terminal number before passing
-                    command.pop(0)
                     # Pass instruction to RT
                     terminal.queue_message(command)
+                    # Pass a copy of the event to BC
+                    bus_controller.queue_message(command)
+                elif(terminal.return_rt_num() == int(command[2])):
+                    # Let the recipient know it will be involved in a transfer
+                    terminal.queue_message(command)'''
 
     # On Keyboard Interrupt, exit the program and deallocate memory
     except KeyboardInterrupt:

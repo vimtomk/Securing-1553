@@ -5,5 +5,5 @@ RT Number
 RT Number
 ... repeat for all other RTs that need initialization
 31 <--This will signify the end of the list of RTs to initialize
-rt/bc to send, rt/bc to recieve, repeat flag, frequency (min seconds between messages), max number of sends (0 means no limit if repeating), message (as a string)
+message type, rt/bc to send, rt/bc to recieve, repeat flag, frequency (min seconds between messages), max number of sends (0 means no limit if repeating), message (as a string)
 ... repeat for all other messages that need sending

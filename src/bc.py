@@ -78,7 +78,9 @@ class bc(object):
     # Define other functions of a BC here
     def queue_message(self, command):
         '''Takes a command in from 1553_simulator.py and turns it into an event/s and adds it/them to the back of the queue'''
-        # Determine how many character pairs there will be, and therefore how many data words need to be queued
+        #TODO: Re-write / modify this function to correctly handle queueing events given the new requirements and format of inputs
+        pass
+        '''# Determine how many character pairs there will be, and therefore how many data words need to be queued
         number_of_pairs = int(len(command[4])/2)
         if ((len(command[4]) % 2) == 1):
             number_of_pairs = number_of_pairs + 1
@@ -108,12 +110,12 @@ class bc(object):
             # Set 16 bits of message data
             tmp[5] = BitArray("0b" + bin(ord(char_pair[0]))[2:] + bin(ord(char_pair[0]))[2:])
             # Add event to queue
-            self.events.append(tmp)
+            self.events.append(tmp)'''
         return
     
     # Takes an event from the queue and turns it into an acutal sendable message
     ##TODO: Flesh out this function to translate events for command and status words
-    def event_to_word(event):
+    def event_to_word(self, event):
         '''Takes an event and returns an actual 20-bit BitArray message corresponding to that event'''
         if event[0] == "d": # This event is for a data word
             if(event[2] == "Y"):
@@ -323,6 +325,7 @@ class bc(object):
     ## validation, transmit a status word.
     def MC_without_DW(self, rt_num, mode_code):
             tmp_msg = self.create_command_word(rt_num, 1, self.zero, mode_code)
+            ##TODO: Use Julien's function
             self.databus.write_BitArray(tmp_msg)
             # Over two seconds, look for a status word from the RT (each .25 
             # secs). If one isn't returned, assume the RT is dead.
@@ -353,7 +356,7 @@ class bc(object):
 
     # Mode Command w/ Data Word Transmit
     # The bus controller shall issue a transmit command word to the RT using a 
-    # mode code specified in Table3-1. The mode code will be (9,10, 16-21) The RT shall, after a command 
+    # mode code specified in Table3-1. The mode code will be (10, 16-21) The RT shall, after a command 
     # word validation, transmit status word, then transmit data word(s).
 
     def MC_with_DW_TX(self, rt_num, msg_count):
@@ -399,8 +402,54 @@ class bc(object):
 
 
     # Mode Command w/ Data Word Receive
-    #def MC_with_DW_RX(self):
+    # The bus controller shall issue a receive command word to the RT using a 
+    # mode code specified in Table3-1. The mode code will be (9, 16-21) The RT shall, after a command 
+    # word validation, receive status word, then receive data word(s).
+    def MC_with_DW_RX(self, rt_num, data, msg_count):
+        tmp_msg = self.create_command_word(rt_num, 0, self.zero, msg_count)
+        self.databus.write_BitArray(tmp_msg)
+        # Over two seconds, look for a status word from the RT (each .25
+        # secs). If one isn't returned, assume the RT is dead.
+        sleep(0.25)
+        time_start = time()
+        while(time() - time_start < 2):
+            # Get current data of bus
+            current_data = self.read_message()
+            # If current message is a status word:
+            if (current_data[0:3] == BitArray(uint=7, length=3)):
+                # If current message is from the RT we were expecting
+                # check parity bit
+                if (current_data[3:8] == BitArray(uint=rt_num, length=5)):
+                    if (BitArray(uint=(current_data.count(1)) % 2 == 0, length=1) and current_data.bin[-1]):
+                        return
+                    else:
+                        print("Parity Bit Error!")
+                        return
+            
+            # Timed out, so put the RT on the dead list and return execution
+            for rt in self.rt_list:
+                if rt.num.uint == rt_num:
+                    self.rt_list.remove(rt)
+                return
 
+            # The BC should write all messages to the RT
+            for msg in msg_count:
+                
+                tmp_msg = self.create_data_word(data)
+                self.databus.write_BitArray(tmp_msg)
+
+
+
+
+
+
+
+
+
+
+
+
+        
     
    
    
@@ -466,5 +515,3 @@ class bc(object):
 
 
             return
-
-
