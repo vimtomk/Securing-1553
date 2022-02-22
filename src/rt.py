@@ -45,6 +45,8 @@ class rt(object):
         # Start listening immediately
         #self.main()
 
+        print("RT {} Init Successful".format(self.num.int)) # Debug line
+
     # Returns the Remote Terminal ID number (0-31)
     def return_rt_num(self):
         return self.num
@@ -86,21 +88,21 @@ class rt(object):
         #threading.Timer(writeTime, self.write_message_timer).start()
         tmp = self.read_message()
         #print(tmp) # Debug line
-        if(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 0 and (self.dwords_expected > 0)): # If a data word 110, and we are expecting a data word
-            print("Data Word received by RT#!" + self.num + "\nData is: " + chr(int(tmp.bin[3:11],2)) + chr(int(tmp.bin[11:19],2)))
+        if(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 0): #and (self.dwords_expected > 0)): # If a data word 110, and we are expecting a data word
+            print("RT" + str(self.num.int) + " says: Data Word received by RT.\nData is: " + chr(int(tmp.bin[3:11],2)) + chr(int(tmp.bin[11:19],2)))
             self.dwords_expected = self.dwords_expected - 1
             pass
         elif((tmp.bin[3:8] == self.num.bin) or (tmp.bin[3:8] == '11111')): # If this is some other word meant for this terminal, or broadcast
             if(tmp.bin[3:8] == '11111'):
-                print("This message was a broadcast!")
+                print("--RT " + str(self.num.int) + " says: This message was a broadcast!")
                 pass
             if(tmp[0] == 1 and tmp[1] == 0 and tmp[2] == 1): # If a command word 101
-                print("Command Word received!\nMode code is: " + tmp.bin[14:19])
+                print("--RT " + str(self.num.int) + " says: Command Word received!\nMode code is: " + tmp.bin[14:19])
                 # Send the mode code to the processor function
-                self.process_mode_code(BitArray('0b' + tmp.bin[14:19]))
+                #self.process_mode_code(BitArray('0b' + tmp.bin[14:19]))
                 pass
             elif(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 1): # If a status word 111
-                print("Status Word received!\nStatus was-\nError Flag: " + tmp.bin[8] + "\nService Request: " + tmp.bin[10] + "\nBusy bit: " + tmp.bin[15])
+                print("--RT " + str(self.num.int) + " says: Status Word received!\nStatus was-\nError Flag: " + tmp.bin[8] + "\nService Request: " + tmp.bin[10] + "\nBusy bit: " + tmp.bin[15])
                 # RT to RT communication may have this RT receive a status word from another RT
                 pass
         else: # This terminal was definitely not the intended recipient of the message

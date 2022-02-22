@@ -14,6 +14,7 @@ from collections import deque
 class bc(object):
     # BC Constructor
     def __init__(self, terminal, rts):
+
         # Initialize BC variables
         self.num            = BitArray(uint=terminal, length=5)     # Value indicating the terminal the bus controller is operating from
         self.received_data  = list()    # A list of the received messages used in context to keep track of data needed for received status words
@@ -37,6 +38,7 @@ class bc(object):
 
         # Begin normal BC behavior
         self.main()
+        return
 
     # Returns the terminal number of the BC
     def return_terminal_num(self):
@@ -137,17 +139,17 @@ class bc(object):
 
     # Craft command word
     def create_command_word(self, target_rt_addr, txrx, sa_mode, dw_count):
-        msg_out = command_word(target_rt_addr, txrx, sa_mode, dw_count)
+        msg_out = command_word.create_command_word(target_rt_addr, txrx, sa_mode, dw_count)
         return msg_out
     
     # Craft status word
     def create_status_word(self, rt_num, msg_err, broad_comm, dyn_bc):
-        msg_out = status_word(rt_num, msg_err, 0, 0, 0, broad_comm, 0, 0, dyn_bc, 0)
+        msg_out = status_word.create_status_word(rt_num, msg_err, 0, 0, 0, broad_comm, 0, 0, dyn_bc, 0)
         return msg_out
 
     # Craft data word
     def create_data_word(self, data):
-        msg_out = data_word(data)
+        msg_out = data_word.create_data_word(data)
         return msg_out
 
     ## TODO: Find out how to transmit command word to check on RT and then instantiate comms

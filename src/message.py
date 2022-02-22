@@ -71,8 +71,8 @@ class message(object):
 
 class command_word:
     
-    
-    def __init__(self, data):
+    """
+    def create_command_word(self, data):
         self.msg_type   = BitArray(uint=5,      length=3)
         self.rt_addr    = data.bin[0:5]    # Five bit flag
         self.tx_rx      = data.bin[5]      # One bit flag
@@ -89,34 +89,33 @@ class command_word:
 
         return self.msg
         
-
+    """
     # Initialize each message field, turn the data to binary, and pack the bits.
-    def __init__(self, rt_addr, tx_rx, sa_mode, mode_code):
-        self.msg_type  = BitArray(uint=5,         length=3)     # 3 bit field
-        self.rt_addr   = BitArray(uint=rt_addr,   length=5)     # 5 bit field
-        self.tx_rx     = BitArray(uint=tx_rx,     length=1)     # 1 bit flag
-        self.sa_mode   = BitArray(uint=sa_mode,   length=5)     # 5 bit field
-        self.mode_code = BitArray(uint=mode_code, length=5)     # 5 bit field
+    def create_command_word(rt_addr, tx_rx, sa_mode, mode_code):
+        msg_type  = BitArray(uint=5,         length=3)     # 3 bit field
+        rt_addr   = BitArray(uint=rt_addr,   length=5)     # 5 bit field
+        tx_rx     = BitArray(uint=tx_rx,     length=1)     # 1 bit flag
+        sa_mode   = BitArray(uint=sa_mode,   length=5)     # 5 bit field
+        mode_code = BitArray(uint=mode_code, length=5)     # 5 bit field
 
     # Create the "data" part of the message.
-        self.msg = BitArray(self.rt_addr)
-        self.msg.append(self.tx_rx)
-        self.msg.append(self.sa_mode)
-        self.msg.append(self.mode_code)
-
+        msg = BitArray(rt_addr)
+        msg.append(tx_rx)
+        msg.append(sa_mode)
+        msg.append(mode_code)
     # Calculate parity of data and append it to the message.
-        self.msg.append(BitArray(uint=((self.msg.count(1)) % 2 == 0), length=1))
+        msg.append(BitArray(uint=((msg.count(1)) % 2 == 0), length=1))
         
     # Once parity is calculated, prepend the msg type.
-        self.msg.prepend(self.msg_type)
+        msg.prepend(msg_type)
 
-        return self.msg.bin
+        return msg
 
 class data_word:
     
 
     # Initialize each message field, turn the data to binary, and pack the bits.
-    def __init__(self, data):
+    def create_data_word(self, data):
         self.msg_type = BitArray(uint=6,        length=3)   # 3 bit field
         self.data     = BitArray(uint=data,     length=16)  # 16 bit field
         
@@ -133,8 +132,8 @@ class data_word:
         
 
 class status_word:
-
-    def __init__(self, data): # data is a 
+    """
+    def create_status_word(self, data): # data is a 
         self.msg_type   = BitArray(uint=7, length=3)  # 3 bit field
         self.rt_addr    = data.bin[0:5]   # Five bit field
         self.msg_err    = data.bin[5]     # One bit flag
@@ -157,11 +156,10 @@ class status_word:
         self.msg.prepend(self.msg_type)
 
         # Print full message in binary without <0b> at the beginning.
-        #print(self.msg.bin)
         return self.msg.bin
 
-
-    def __init__(self, rt_addr, msg_err, instrum, serv_req, reserved, broad_comm, busy, sub_flag, dyn_bc, term_flag):
+    """
+    def create_status_word(self, rt_addr, msg_err, instrum, serv_req, reserved, broad_comm, busy, sub_flag, dyn_bc, term_flag):
 
         # Initialize each message field, turn the data to binary, and pack the bits.
         self.msg_type   = BitArray(uint=7,          length=3)  # 3 bit field

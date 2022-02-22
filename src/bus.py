@@ -15,6 +15,7 @@ class bus(object):
     def __init__(self):
         '''Initializes the bus, and all values are cleared by default'''
         self.__dA9tA9mA6nG0lE9dd = BitArray('0x00000') # 20 bits of '0'
+        #print("Bus Init Successful") # Debug line
         # Bus values SHOULD ONLY BE ACCESSED THROUGH FUNCTIONS.
         # Python doesn't allow private variables, so the name is mangled to discourage direct access.
 
