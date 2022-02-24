@@ -4,6 +4,7 @@ BM Number
 RT Number
 RT Number
 ... repeat for all other RTs that need initialization
-31 <--This will signify the end of the list of RTs to initialize
-message type, rt/bc to send, rt/bc to recieve, repeat flag, frequency (min seconds between messages), max number of sends (0 means no limit if repeating), message (as a string)
+31 <--This will signify the end of the list of RTs to initialize, as 31 is reserved for broadcasting anyways
+"RT Sender", "RT Receiver", repeat flag, frequency (hz), num occurences (0 for INF), "msg type", "msg data" OR "command word data"
+e.g., RT01,RT02,0,0,1,data,Hello RT2!
 ... repeat for all other messages that need sending

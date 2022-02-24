@@ -24,7 +24,7 @@ class demo():
 
         # Setup RT objects and pass them along to the BC
         print("\n----Initializing RTs----")
-        self.rt_nums = [1,2,3,4]
+        self.rt_nums = [1,2,3,4,5]
         self.rts     = []
         for rt_num in self.rt_nums:
             self.rts.append(rt(rt_num))
@@ -36,7 +36,7 @@ class demo():
 
         # Begin sending messages using BC/RT Functions and having the recipient print message type and contents.
         self.main()
-        
+
     
     # Delete Function
     def __del__(self):

@@ -59,27 +59,6 @@ class rt(object):
     def read_message(self):
         tmp = self.databus.read_BitArray()
         return tmp
-    
-    # Takes an event from the queue and turns it into an acutal sendable message
-    def event_to_word(self, event):
-        '''Takes an event and returns an actual 20-bit BitArray message corresponding to that event'''
-        if event[0] == "d": # This event is for a data word
-            if(event[2] == "Y"):
-                if(event[4] == 0):
-                    # Message repeats indefinitely, just add a copy to the queue
-                    threading.Timer(event[3], self.events.append, [event]).start()
-                elif(event[4] > 1):
-                    # Decrement number of messages remaining, and add next event to queue
-                    event[4] = event[4] - 1
-                    threading.Timer(event[3], self.events.append, [event]).start()
-            return self.create_data_word(int(event[5].bin, 2))
-        elif event[0] == "c": # This event is for a command word
-            # RTs should not be sending command words! Pass.
-            pass
-        elif event[0] == "s": # This event is for a status word
-            return message.status_word() ##TODO: Test how this works, and make sure a status word is correct.
-        #BitArray(uint=int(event[0][2:5]), length=5)
-        return
 
     def read_message_timer(self, delay):
         '''Version of read_message that loops execution indefinitely and makes use of any important messages'''
@@ -89,7 +68,7 @@ class rt(object):
         tmp = self.read_message()
         #print(tmp) # Debug line
         if(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 0): #and (self.dwords_expected > 0)): # If a data word 110, and we are expecting a data word
-            print("RT" + str(self.num.int) + " says: Data Word received by RT.\nData is: " + chr(int(tmp.bin[3:11],2)) + chr(int(tmp.bin[11:19],2)))
+            print("--RT " + str(self.num.int) + " says: Data Word received by RT.\nData is: " + chr(int(tmp.bin[3:11],2)) + chr(int(tmp.bin[11:19],2)))
             self.dwords_expected = self.dwords_expected - 1
             pass
         elif((tmp.bin[3:8] == self.num.bin) or (tmp.bin[3:8] == '11111')): # If this is some other word meant for this terminal, or broadcast
@@ -329,27 +308,8 @@ class rt(object):
     
     def queue_message(self, command):
         '''Takes a command in from 1553_simulator.py and turns it into an event and queues it'''
-        #TODO: Re-write / modify this function to correctly handle queueing events given the new requirements and format of inputs
-        pass
-        '''tmp = []
-        # Set dst
-        if(command[0] < 10): # Pads a zero to keep string of length 4 if RT# is not double-digit
-            tmp[0] = "RT0" + str(command[0])
-        else:
-            tmp[0] = "RT" + str(command[0])
-        # Set loop flag
-        if(command[1]):
-            tmp[1] = "Y"
-        else:
-            tmp[1] = "N"
-        # Set frequency
-        tmp[2] = command[2]
-        # Set number occurences, remember that 0 means loop infinitely!
-        tmp[3] = command[3]
-        # Set message string
-        tmp[4] = command[4]
-        # Add event to queue
-        self.events.append(tmp)'''
+        self.events.append(command)
+        return
     
     # RT Destructor
     def __del__(self):

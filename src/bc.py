@@ -81,60 +81,7 @@ class bc(object):
     def queue_message(self, command):
         '''Takes a command in from 1553_simulator.py and turns it into an event/s and adds it/them to the back of the queue'''
         #TODO: Re-write / modify this function to correctly handle queueing events given the new requirements and format of inputs
-        pass
-        '''# Determine how many character pairs there will be, and therefore how many data words need to be queued
-        number_of_pairs = int(len(command[4])/2)
-        if ((len(command[4]) % 2) == 1):
-            number_of_pairs = number_of_pairs + 1
-        # Take string and parse it into an array of two-character tokens
-        char_pairs = []
-        for x in range(0, number_of_pairs, 2):
-            char_pairs.append(command[4][x:(x+2)])
-        for char_pair in char_pairs:
-            if(len(char_pair) == 1):
-                char_pair = char_pair + " "
-            tmp = []
-            # Set dst
-            tmp[0]  = "d" # Indicate that this event is to send a data word
-            if(command[0] < 10): # Pads a zero to keep string of length 4 if RT# is not double-digit
-                tmp[1] = "RT0" + str(command[0])
-            else:
-                tmp[1] = "RT" + str(command[0])
-            # Set loop flag
-            if(command[1]):
-                tmp[2] = "Y"
-            else:
-                tmp[2] = "N"
-            # Set frequency
-            tmp[3] = command[2]
-            # Set number occurences, remember that 0 means loop infinitely!
-            tmp[4] = command[3]
-            # Set 16 bits of message data
-            tmp[5] = BitArray("0b" + bin(ord(char_pair[0]))[2:] + bin(ord(char_pair[0]))[2:])
-            # Add event to queue
-            self.events.append(tmp)'''
-        return
-    
-    # Takes an event from the queue and turns it into an acutal sendable message
-    ##TODO: Flesh out this function to translate events for command and status words
-    def event_to_word(self, event):
-        '''Takes an event and returns an actual 20-bit BitArray message corresponding to that event'''
-        if event[0] == "d": # This event is for a data word
-            if(event[2] == "Y"):
-                if(event[4] == 0):
-                    # Message repeats indefinitely, just add a copy to the queue
-                    threading.Timer(event[3], self.events.append, [event]).start()
-                elif(event[4] > 1):
-                    # Decrement number of messages remaining, and add next event to queue
-                    event[4] = event[4] - 1
-                    threading.Timer(event[3], self.events.append, [event]).start()
-            return self.create_data_word(int(event[5].bin, 2))
-        elif event[0] == "c": # This event is for a command word
-            ##TODO: Define how an event for a command word is coded
-            pass
-        elif event[0] == "s": # This event is for a status word
-            return self.create_status_word(self.num, self.error, 0, 0)
-        #BitArray(uint=int(event[0][2:5]), length=5)
+        self.events.append(command)
         return
 
     # Craft command word

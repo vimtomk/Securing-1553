@@ -71,8 +71,7 @@ class message(object):
 
 class command_word:
     
-    """
-    def create_command_word(self, data):
+    def create_command_word_with_data(self, data):
         self.msg_type   = BitArray(uint=5,      length=3)
         self.rt_addr    = data.bin[0:5]    # Five bit flag
         self.tx_rx      = data.bin[5]      # One bit flag
@@ -89,7 +88,7 @@ class command_word:
 
         return self.msg
         
-    """
+
     # Initialize each message field, turn the data to binary, and pack the bits.
     def create_command_word(rt_addr, tx_rx, sa_mode, mode_code):
         msg_type  = BitArray(uint=5,         length=3)     # 3 bit field
@@ -132,8 +131,8 @@ class data_word:
         
 
 class status_word:
-    """
-    def create_status_word(self, data): # data is a 
+
+    def create_status_word_with_data(self, data): # data is a 
         self.msg_type   = BitArray(uint=7, length=3)  # 3 bit field
         self.rt_addr    = data.bin[0:5]   # Five bit field
         self.msg_err    = data.bin[5]     # One bit flag
@@ -158,7 +157,7 @@ class status_word:
         # Print full message in binary without <0b> at the beginning.
         return self.msg.bin
 
-    """
+
     def create_status_word(self, rt_addr, msg_err, instrum, serv_req, reserved, broad_comm, busy, sub_flag, dyn_bc, term_flag):
 
         # Initialize each message field, turn the data to binary, and pack the bits.
