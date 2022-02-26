@@ -393,21 +393,6 @@ class bc(object):
                 
                 tmp_msg = self.create_data_word(data)
                 self.databus.write_BitArray(tmp_msg)
-
-
-
-
-
-
-
-
-
-
-
-
-        
-    
-   
    
     ## A BC should first send a RT a Command Word telling it to receive, next Data Words will be sent by the BC containing BC's public key,
     ## finally a RT should send a Status Word to acknowledge that it has received the Data Words.
@@ -443,8 +428,6 @@ class bc(object):
             return
     
     
-    
-    
     ## A BC should first send a RT a Command Word telling it to transmit their public key, next the RT should send a status word followed by a data word containing its public key
     def receive_public_key(self):
 
@@ -471,3 +454,18 @@ class bc(object):
 
 
             return
+    
+    def string_to_tokens(in_string):
+        '''Takes in a string and returns a list of 2-character pairs from that string.
+        If the string's length is not divisible by 2, the final character is accompanied by a space.'''
+        out_tokens = []
+        i = int(len(in_string)/2)
+        if(len(in_string) % 2):
+            # String length is odd. A space needs to be padded at the end.
+            i = i + 1
+        for j in range(0,i):
+            if(len(in_string[2 * j:]) == 1):
+                out_tokens.append( in_string[2 * j] + " " )
+            else:
+                out_tokens.append( in_string[2 * j] + in_string[2 * j + 1])
+        return out_tokens

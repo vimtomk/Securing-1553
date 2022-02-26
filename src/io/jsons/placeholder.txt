@@ -1,1 +1,1 @@
-To keep visual studio code from deleting the "jsons" folder for being empty, this file is temporarially here.
+To keep visual studio code from deleting the "jsons" folder for being empty, this file is here for now.

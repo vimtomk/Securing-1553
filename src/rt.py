@@ -310,8 +310,22 @@ class rt(object):
         '''Takes a command in from 1553_simulator.py and turns it into an event and queues it'''
         self.events.append(command)
         return
+
+    def string_to_tokens(in_string):
+        '''Takes in a string and returns a list of 2-character pairs from that string.
+        If the string's length is not divisible by 2, the final character is accompanied by a space.'''
+        out_tokens = []
+        i = int(len(in_string)/2)
+        if(len(in_string) % 2):
+            # String length is odd. A space needs to be padded at the end.
+            i = i + 1
+        for j in range(0,i):
+            if(len(in_string[2 * j:]) == 1):
+                out_tokens.append( in_string[2 * j] + " " )
+            else:
+                out_tokens.append( in_string[2 * j] + in_string[2 * j + 1])
+        return out_tokens
     
     # RT Destructor
     def __del__(self):
         del(self)
-

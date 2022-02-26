@@ -7,4 +7,4 @@ RT Number
 31 <--This will signify the end of the list of RTs to initialize, as 31 is reserved for broadcasting anyways
 "RT Sender", "RT Receiver", repeat flag, frequency (hz), num occurences (0 for INF), "msg type", "msg data" OR "command word data"
 e.g., RT01,RT02,0,0,1,data,Hello RT2!
-... repeat for all other messages that need sending
+... repeat for all other messages that need sending. Don't use commas in message strings.
