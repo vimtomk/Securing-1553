@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from bus import bus
-import bc, rt, bm, os, sys, threading#, time
+import bc, rt, bm, os, sys, threading
 
 databus = bus()     # Points to the shared bus
 bc_num  = 0         # Terminal Number of the BC

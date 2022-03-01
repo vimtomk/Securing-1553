@@ -19,7 +19,7 @@ class bus(object):
         # Bus values SHOULD ONLY BE ACCESSED THROUGH FUNCTIONS.
         # Python doesn't allow private variables, so the name is mangled to discourage direct access.
 
-    # PREFERRED WAY TO READ FROM BUS!
+    # Most "accurate" way to read from bus, as information is read bit-by-bit.
     def read_bit(self, pos):
         '''Returns a 1 or 0, from a position 0-19 on the bus. 
         Call multiple times to be more accurate to the real way bus data is recieved.'''
@@ -27,7 +27,7 @@ class bus(object):
             return # Some mistake was made in calling this function, do nothing.
         return int(self.__dA9tA9mA6nG0lE9dd[pos])
 
-    # PREFERRED WAY TO WRITE TO BUS!
+    # Most "accurate" way to write to bus, as information is written bit-by-bit.
     def write_bit(self, val, pos):
         '''Takes a 1 or 0, and overwrites a position 0-19 on the bus. 
         Call multiple times to be more accurate to the real way bus data is sent.'''
@@ -36,12 +36,12 @@ class bus(object):
         self.__dA9tA9mA6nG0lE9dd[pos] = val
         return
 
-    # Fast, easy way to read from bus. Good for logging after bus data is all in place.
+    # Fast, easy way to read from bus.
     def read_BitArray(self):
         '''Gets the data in the bus, and returns it ALL AT ONCE as a BitArray'''
         return self.__dA9tA9mA6nG0lE9dd
 
-    # Fast, easy way to write to bus. Fine when digit-by-digit transmission accuracy isn't important.
+    # Fast, easy way to write to bus.
     def write_BitArray(self, in_data):
         '''Takes in a BitArray, and overwrites bus data ALL AT ONCE'''
         if(len(in_data) != 20):
@@ -50,6 +50,12 @@ class bus(object):
             if not ( (in_data[value] == True) or (in_data[value] == False) ):
                 return # Not a BitArray, do not write!
         self.__dA9tA9mA6nG0lE9dd = in_data
+        return
+
+    # Quick, callable bus wipe
+    def clear_bus(self):
+        '''Sets all 20 bits on the bus to 0'''
+        self.__dA9tA9mA6nG0lE9dd = BitArray('0x00000') # 20 bits of '0'
         return
 
     # Quick way to tell if bus is empty for if statements
@@ -62,6 +68,7 @@ class bus(object):
 
     # Destructor. Just deletes the object - DO NOT USE UNTIL EXITING SIMULATION!
     def __del__(self):
+        '''This is the destructor of the bus object. It just does del(self)'''
         del(self)
 
 #bus = bus() # Un-comment to initialize the bus on import, usually not needed
