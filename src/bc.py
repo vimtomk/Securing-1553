@@ -9,7 +9,7 @@ from queue import Queue
 import time, random, threading, secrets
 from encryptor import DHKE
 from collections import deque
-
+from math import ceil
 
 class bc(object):
     # BC Constructor
@@ -111,7 +111,7 @@ class bc(object):
         
         for rt in self.rt_list:
             # The two at the end ensures we are using mode code 2 which means the BC wants the RT to send a status word
-            self.create_command_word(rt, 1, 0, 2)
+            self.create_command_word(rt, self.tx, self.zero, 2)
             # Now wait a second and listen for message on bus
             sleep(1)
             # Wait no longer than 10 seconds
@@ -206,25 +206,47 @@ class bc(object):
     def __del__(self):
         del(self)
 
-    ## TODO: Create functions for the optional broadcast transfers between BC and Specific RT's or Pair of RT's
+    ## TODO: Finish this
+    # Event Handler
+    def event_handler(self):
+        
+        return
+
 
     # BC -> RT
     ## Bus Controller to Remote Terminal Transfer
     ## The Bus Controller sends one 16-bit receive command word
     ## immediately followed by 1 to 32 16-bit data words. 
     ## The selected Remote Terminal then sends a single 16-bit Status word.
-    def BC_RT_Transfer(self, rt_num_rx, msg_count, data):
+    def BC_RT_Transfer(self, rt_num_rx, data):
+        
+        # calculate msg_count, based on the length of the data being passed in
+        # this calculation will be used for creation of the command word and data words for this transfer
+        if (len(data) % 2 == 0):
+            msg_count = len(data) / 2
+        else:
+            msg_count = ceil(len(data) / 2)
+        
+        i = len(data)
+        ## TODO: Finish this
+        #while (i > 0):
+        #    x =
+    
         # Create and issue the command word for the receiving RT
-        tmp_msg_rx     = self.create_command_word(rt_num_rx, 0, self.zero, msg_count)
+        tmp_msg_rx     =    self.create_command_word(rt_num_rx, self.rx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_rx)
+        
         # Create and issue 1 to 32 16-bit data words
-        for rt in self.rt_list:
-            data_word  = self.create_data_word(data)
-            self.issue_data_word(data_word)
+        for msg in msg_count:
+            data_msg     =    self.create_data_word(data)
+            self.issue_data_word(data_msg)
             return
+            
+        
         # Create and issue the status word from the receiving RT
-        rt_status      = self.create_status_word(rt_num_rx, rt_num_rx.msg_err, rt_num_rx.rcvd_broadcast, rt_num_rx.dynamic_bus)
+        rt_status      =    self.create_status_word(rt_num_rx, rt_num_rx.msg_err, rt_num_rx.rcvd_broadcast, rt_num_rx.dynamic_bus)
         self.issue_status_word(rt_status)
+        
         return
 
     # RT -> BC
@@ -232,18 +254,29 @@ class bc(object):
     ## The Bus Controller sends one transmit command word to a Remote Terminal. 
     ## The Remote Terminal then sends a single Status word 
     ## immediately followed by 1 to 32 words.
-    def RT_BC_Transfer(self, rt_num_tx, msg_count, data):
+    def RT_BC_Transfer(self, rt_num_tx, data):
+        
+        # calculate msg_count, based on the length of the data being passed in
+        # this calculation will be used for creation of the command word and data words for this transfer
+        if (len(data) % 2 == 0):
+            msg_count = len(data) / 2
+        else:
+            msg_count = ceil(len(data) / 2)
+
         # Create and issue the command word for the transmitting RT
-        tmp_msg_tx     =  self.create_command_word(rt_num_tx, 1, self.zero, msg_count)
+        tmp_msg_tx     =    self.create_command_word(rt_num_tx, 1, self.zero, msg_count)
         self.issue_command_word(tmp_msg_tx)
+        
         # Create and issue the status word from the transmitting RT
-        rt_status      =  self.create_status_word(rt_num_tx, rt_num_tx.msg_err, rt_num_tx.rcvd_broadcast, rt_num_tx.dynamic_bus)
+        rt_status      =    self.create_status_word(rt_num_tx, rt_num_tx.msg_err, rt_num_tx.rcvd_broadcast, rt_num_tx.dynamic_bus)
         self.issue_status_word(rt_status)
+        
         # Create and issue 1 to 32 16-bit data words
-        for rt in self.rt_list:
-            data_word  = self.create_data_word(data)
-            self.issue_data_word(data_word)
+        for msg in msg_count:
+            data_msg     =    self.create_data_word(data)
+            self.issue_data_word(data_msg)
             return
+        
         return
 
 
@@ -254,24 +287,37 @@ class bc(object):
     ## The transmitting Remote Terminal sends a Status word
     ## immediately followed by 1 to 32 data words. 
     ## The receiving Terminal then sends its Status word.
-    def RT_RT_Transfer(self, rt_num_rx, rt_num_tx, msg_count, data):
+    def RT_RT_Transfer(self, rt_num_rx, rt_num_tx, data):
+        
+        # calculate msg_count, based on the length of the data being passed in
+        # this calculation will be used for creation of the command word and data words for this transfer
+        if (len(data) % 2 == 0):
+            msg_count = len(data) / 2
+        else:
+            msg_count = ceil(len(data) / 2)
+
         # Create and issue the command word for the receiving RT
-        tmp_msg_rx    =  self.create_command_word(rt_num_rx, 0, self.zero, msg_count)
+        tmp_msg_rx    =  self.create_command_word(rt_num_rx, self.rx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_rx)
+        
         # Create and issue the command word for the transmitting RT
-        tmp_msg_tx    =  self.create_command_word(rt_num_tx, 1, self.zero, msg_count)
+        tmp_msg_tx    =  self.create_command_word(rt_num_tx, self.tx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_rx)
+        
         # Create and issue the status word from the transmitting RT
         rt_status_tx  = self.create_status_word(rt_num_tx, rt_num_tx.msg_err, rt_num_tx.rcvd_broadcast, rt_num_tx.dynamic_bus)
         self.issue_status_word(rt_status_tx)
+        
         # Create and issue 1 to 32 16-bit data words
-        for rt in self.rt_list:
-            data_word = self.create_data_word(data)
-            self.issue_data_word(data_word)
+        for msg in msg_count:
+            data_msg     =    self.create_data_word(data)
+            self.issue_data_word(data_msg)
             return
+        
         # Create and issue the status word from the receiving RT
         rt_status_rx  = self.create_status_word(rt_num_rx, rt_num_rx.msg_err, rt_num_rx.rcvd_broadcast, rt_num_rx.dynamic_bus)
         self.issue_status_word(rt_status_rx)
+        
         return
          
 
@@ -280,17 +326,22 @@ class bc(object):
     ## mode code specified in Table3-1. The RT shall, after command word 
     ## validation, transmit a status word.
     def MC_without_DW(self, rt_num, mode_code):
-            tmp_msg = self.create_command_word(rt_num, 1, self.zero, mode_code)
+            tmp_msg = self.create_command_word(rt_num, self.tx, self.zero, mode_code)
+            
             ##TODO: Use Julien's function
             self.databus.write_BitArray(tmp_msg)
             # Over two seconds, look for a status word from the RT (each .25 
             # secs). If one isn't returned, assume the RT is dead.
             sleep(0.25)
+            
             #self.read_message_timer(1)
             time_start = time()
+            
             while(time() - time_start < 2):
+               
                 # Get current data of bus
                 current_data = self.read_message()
+                
                 # If current message a status word:
                 if (current_data[0:3] == BitArray(uint=7, length=3)):
                     # If current message is from the RT we were expecting 
@@ -315,8 +366,9 @@ class bc(object):
     # mode code specified in Table3-1. The mode code will be (10, 16-21) The RT shall, after a command 
     # word validation, transmit status word, then transmit data word(s).
 
-    def MC_with_DW_TX(self, rt_num, msg_count):
-            tmp_msg = self.create_command_word(rt_num, 1, self.zero, msg_count)
+    def MC_with_DW_TX(self,  rt_num,  msg_count):
+            
+            tmp_msg = self.create_command_word(rt_num,  self.tx,  self.zero,  msg_count)
             self.databus.write_BitArray(tmp_msg)
             # Over two seconds, look for a status word from the RT (each .25
             # secs). If one isn't returned, assume the RT is dead.
@@ -362,7 +414,7 @@ class bc(object):
     # mode code specified in Table3-1. The mode code will be (9, 16-21) The RT shall, after a command 
     # word validation, receive status word, then receive data word(s).
     def MC_with_DW_RX(self, rt_num, data, msg_count):
-        tmp_msg = self.create_command_word(rt_num, 0, self.zero, msg_count)
+        tmp_msg = self.create_command_word(rt_num,   self.rx,   self.zero,  msg_count)
         self.databus.write_BitArray(tmp_msg)
         # Over two seconds, look for a status word from the RT (each .25
         # secs). If one isn't returned, assume the RT is dead.
@@ -384,6 +436,7 @@ class bc(object):
             
             # Timed out, so put the RT on the dead list and return execution
             for rt in self.rt_list:
+                
                 if rt.num.uint == rt_num:
                     self.rt_list.remove(rt)
                 return
@@ -394,6 +447,7 @@ class bc(object):
                 tmp_msg = self.create_data_word(data)
                 self.databus.write_BitArray(tmp_msg)
    
+
     ## A BC should first send a RT a Command Word telling it to receive, next Data Words will be sent by the BC containing BC's public key,
     ## finally a RT should send a Status Word to acknowledge that it has received the Data Words.
     def send_public_key(self):
