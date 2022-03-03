@@ -70,14 +70,23 @@ class bm(object):
             bus_event["Data Word"] = chr(int(tmp_message.bin[3:11],2)) + chr(int(tmp_message.bin[11:19],2))
         elif(tmp_message[0] == 1 and tmp_message[1] == 0 and tmp_message[2] == 1): # If a command word 101...
             bus_event["Message Type"] = "Command"
-            #TODO: Check if it's an actual command in the mode code or a count of data words to send
-            bus_event["Mode Code"] = tmp_message.bin[14:19]
-            #TODO: Add field for recipient, and other relevent data
+            bus_event["Recipient RT"] = int("0b" + tmp_message.bin[3:8], 2)
+            bus_event["T(1)/R(0) Bit"] = tmp_message.bin[8]
+            if((tmp_message[9:14] == "00000") or tmp_message[9:14] == "11111"): # If subaddress field is either of these, it is a mode code in the next 5-bit field
+                bus_event["Command Type"] = "Mode Code"
+                bus_event["Mode Code Raw"] = tmp_message.bin[14:19]
+                #TODO: Add or replace code to actually parse out which mode code is being used
+            else:
+                bus_event["Command Type"] = "Word Count"
         elif(tmp_message[0] == 1 and tmp_message[1] == 1 and tmp_message[2] == 1): # If a status word 111...
             bus_event["Message Type"] = "Status"
+            bus_event["Recipient RT"] = int("0b" + tmp_message.bin[3:8], 2)
             #TODO: Parse out relevent fields to log 
+        else:
+            bus_event["Message Type"] = "Error"
         #TODO: Any other things that need to be logged to the json should probably be recorded here...
         # Keep a temporary copy of the last message for future comparisons.
+        # Indicate if the whole word passes its parity check
         self.last_message = tmp_message
         return
 
