@@ -36,10 +36,11 @@ class attacker(object):
             self.__del__()
         pass #TODO: Add code to begin execution of different attacks based on input attack type
 
-    def __init__(self, atk_type, frequency, terminal_num_src, terminal_num_dst):
+    #TODO: Since Python doesn't allow multiple _init_s for different argument counts, find a workaround...
+    #def __init__(self, atk_type, frequency, terminal_num_src, terminal_num_dst):
         '''Initializes an attack of the type "atk_type", specifically "Imitation".
         An alternate init is required to get the terminal number to imitate.'''
-        if(type(atk_type) is not str):
+        '''if(type(atk_type) is not str):
             print("First argument should be an attack type. Please use: \nDoS\nEavesdropping\nImitation")
             self.__del__()
         if(atk_type == "DoS"):
@@ -59,14 +60,14 @@ class attacker(object):
             pass #TODO: Define behavior for imitation
         else:
             print("Sorry, that attack type is not recognized or implemented. Exiting...")
-            self.__del__()
+            self.__del__()'''
 
     def deny_service(self, frequency):
         '''Fills the bus with random noise to deny effective communication'''
         Timer(frequency, self.deny_service, [frequency]).start() # Call repeatedly on a timer
-        bus.write_bit(randint(0, 1), randint(0, 19))
-        bus.write_bit(randint(0, 1), randint(0, 19))
-        bus.write_bit(randint(0, 1), randint(0, 19))
+        self.bus.write_bit(randint(0, 1), randint(0, 19))
+        self.bus.write_bit(randint(0, 1), randint(0, 19))
+        self.bus.write_bit(randint(0, 1), randint(0, 19))
         return
 
     def eavesdrop(self, frequency):

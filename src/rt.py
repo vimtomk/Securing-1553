@@ -38,7 +38,8 @@ class rt(object):
         self.last_status_word   = BitArray(uint=0, length=20)   # Use to store last status word so we can transmit
         self.last_command_word  = BitArray(uint=0, length=20)   # Use to store last received command word
         self.dwords_expected    = 0       # A counter that keeps track of how many data words the terminal is still expecting to receive
-        self.write_permission   = 0       # Flag indicating if this RT has permission to write to the bus or not
+        self.dwords_stored      = ""      # Stores a string of data words as they come in, eventually being output to the terminal.
+        self.write_permission   = 0       # Count indicating how many data words this RT has permission to write to the bus
         
         self.events             = deque() # A list of events (str arrays) that come from 1553_simulator
 
@@ -64,28 +65,46 @@ class rt(object):
         '''Version of read_message that loops execution indefinitely and makes use of any important messages'''
         #threading.Timer(delay, self.read_message_timer, [delay]).start()
         writeTime = float(delay) - (float(delay)/float(5)) # Time near the end of cycle where the terminal should write if it needs to
-        #threading.Timer(writeTime, self.write_message_timer).start()
+        threading.Timer(writeTime, self.write_message_timer).start()
         tmp = self.read_message()
         #print(tmp) # Debug line
         if(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 0): #and (self.dwords_expected > 0)): # If a data word 110, and we are expecting a data word
             print("--RT " + str(self.num.int) + " says: Data Word received by RT.\nData is: " + chr(int(tmp.bin[3:11],2)) + chr(int(tmp.bin[11:19],2)))
-            self.dwords_expected = self.dwords_expected - 1
-            pass
+            if(self.dwords_expected != 0):
+                self.dwords_expected = self.dwords_expected - 1
+            else: # This terminal is not expecting data words. Stop reading.
+                return
+            pass #TODO: Define what to do with data words
+            self.dwords_stored.append(chr(int(tmp.bin[3:11],2)) + chr(int(tmp.bin[11:19],2)))
+            if(self.dwords_expected == 0):
+                print(self.dwords_stored)
+                self.dwords_stored = ""
+            if(tmp.count(1) % 2 == 0): # Failed parity check
+                self.error = 1
+            #else: # Passed parity check
         elif((tmp.bin[3:8] == self.num.bin) or (tmp.bin[3:8] == '11111')): # If this is some other word meant for this terminal, or broadcast
             if(tmp.bin[3:8] == '11111'):
                 print("--RT " + str(self.num.int) + " says: This message was a broadcast!")
                 pass
             if(tmp[0] == 1 and tmp[1] == 0 and tmp[2] == 1): # If a command word 101
-                print("--RT " + str(self.num.int) + " says: Command Word received!\nMode code is: " + tmp.bin[14:19])
-                # Send the mode code to the processor function
-                #self.process_mode_code(BitArray('0b' + tmp.bin[14:19]))
-                pass
+                # Check to see if the command word contains a Mode Code or a Word Count
+                if((tmp[9:14] == "00000") or tmp[9:14] == "11111"): # If subaddress field is either of these, it is a mode code in the next 5-bit field
+                    print("Command Word received!\nMode code is: " + tmp.bin[14:19])
+                    # Send the mode code to the processor function
+                    self.process_mode_code(BitArray('0b' + tmp.bin[14:19]))
+                else: # This command word is permitting the terminal to send data words
+                    print("Command Word received!\nWord Count is: " + int("0b" + tmp.bin[14:19], 2))
+                    self.write_permission = int("0b" + tmp.bin[14:19], 2)
+            if(tmp.count(1) % 2 == 0): # Failed parity check
+                self.error = 1
+            #else: # Passed parity check
             elif(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 1): # If a status word 111
                 print("--RT " + str(self.num.int) + " says: Status Word received!\nStatus was-\nError Flag: " + tmp.bin[8] + "\nService Request: " + tmp.bin[10] + "\nBusy bit: " + tmp.bin[15])
-                # RT to RT communication may have this RT receive a status word from another RT
-                pass
-        else: # This terminal was definitely not the intended recipient of the message
-            pass
+                #TODO: Define behavior when taking in status words
+                if(tmp.count(1) % 2 == 0): # Failed parity check
+                    self.error = 1
+            #else: # Passed parity check
+        #else: # This terminal was definitely not the intended recipient of the message
         ##TODO: Add code to process the read in message (temp). This includes:
         #-Finding if the message is addressed to this device or is broadcast
         #-If this device was meant to get the message, process it
@@ -95,9 +114,11 @@ class rt(object):
     def write_message_timer(self):
         '''At the end of a time interval, this function is called and if the terminal has a need and the permissions
         to write to the bus, it will do so.'''
-        if((self.write_permission == False) or (len(self.events) == 0)): # If there is no permission to write anything or nothing to write, return immediately.
+        if((self.write_permission == 0) or (len(self.events) == 0)): # If there is no permission to write anything or nothing to write, return immediately.
             return
-        self.databus.write_BitArray(self.event_to_word(self.events.pop()))
+        print("Writing a message to the bus!")
+        #TODO: Better define write conditions and behavior
+        #self.databus.write_BitArray(self.event_to_word(self.events.pop()))
         return
 
     ## TODO: Create a function that will process a given mode code from command words
@@ -326,6 +347,36 @@ class rt(object):
                 out_tokens.append( in_string[2 * j] + in_string[2 * j + 1])
         return out_tokens
     
+    # Validates that a received status word has no errors
+    def validate_status_word(self, status_word):
+        self.msg_err = 0
+        if (status_word.msg_type_bits !=  "111"):
+            self.msg_err = 1
+        # Check for odd parity in the 16 data bits (exclude the type bits)
+        elif ((status_word.raw_data.count(1) % 2) == 0):
+            self.msg_err = 1
+        return self.msg_err
+
+    # Validates that a received data word has no errors
+    def validate_data_word(self, data_word):
+        self.msg_err = 0
+        if (data_word.msg_type_bits !=  "101"):
+            self.msg_err = 1
+        # Check for odd parity
+        elif ( (data_word.raw_data.count(1) % 2) == 0):
+            self.msg_err = 1
+        return self.msg_err
+
+    # Validates that a received command word has no errors
+    def validate_command_word(self, command_word):
+        self.msg_err = 0
+        if (command_word.msg_type_bits != "111"):
+            self.msg_err = 1
+        # Check for incorrect parity
+        elif ((command_word.raw_data.count(1) % 2) == 0):
+            self.msg_err = 1
+        return self.msg_err
+
     # RT Destructor
     def __del__(self):
         del(self)

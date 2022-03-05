@@ -34,6 +34,7 @@ class bc(object):
         # Instantiate the queues that store events (sequences of messages to be sent)
         self.events             = deque()   # A list of events from 1553_simulator. Add critical messages (like responses to other devices) to the front of the queue
         self.dwords_expected    = 0         # A counter that keeps track of how many data words the terminal is still expecting to receive
+        self.dwords_stored      = ""        # Stores a string of data words as they come in, eventually being output to the terminal.
         self.write_permission   = False     # Keeps track of if the BC is the one who should be writing to the bus this cycle
 
         # Begin normal BC behavior
@@ -61,19 +62,21 @@ class bc(object):
 
     # Validates that a received status word has no errors
     def validate_status_word(self, status_word):
+        self.error = 0
         if (status_word.msg_type_bits !=  "111"):
             self.error = 1
-        # Check for odd parity
-        elif ( (status_word.count(1) % 2) == 0):
+        # Check for odd parity in the 16 data bits (exclude the type bits)
+        elif ((status_word.raw_data.count(1) % 2) == 0):
             self.error = 1
         return self.error
 
     # Validates that a received data word has no errors
     def validate_data_word(self, data_word):
+        self.error = 0
         if (data_word.msg_type_bits !=  "101"):
             self.error = 1
         # Check for odd parity
-        elif ( (data_word.count(1) % 2) == 0):
+        elif ( (data_word.raw_data.count(1) % 2) == 0):
             self.error = 1
         return self.error
         
@@ -153,27 +156,43 @@ class bc(object):
         '''Version of read_message that loops execution indefinitely and makes use of any important messages'''
         #threading.Timer(delay, self.read_message_timer, [delay]).start()
         writeTime = float(delay) - (float(delay)/float(5)) # Time near the end of cycle where the terminal should write if it needs to
-        #threading.Timer(writeTime, self.write_message_timer).start()
+        threading.Timer(writeTime, self.write_message_timer).start()
         tmp = self.read_message()
         #print(tmp) # Debug line
         if(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 0 and (self.dwords_expected > 0)): # If a data word 110, and we are expecting a data word
             print("Data Word received by BC!\nData is: " + chr(int(tmp.bin[3:11],2)) + chr(int(tmp.bin[11:19],2)))
-            self.dwords_expected = self.dwords_expected - 1
-            pass
+            if(self.dwords_expected != 0):
+                self.dwords_expected = self.dwords_expected - 1
+            else: # This terminal is not expecting data words. Stop reading.
+                return
+            pass #TODO: Define what to do with data words
+            self.dwords_stored.append(chr(int(tmp.bin[3:11],2)) + chr(int(tmp.bin[11:19],2)))
+            if(self.dwords_expected == 0):
+                print(self.dwords_stored)
+                self.dwords_stored = ""
+            if(tmp.count(1) % 2 == 0): # Failed parity check
+                self.error = 1
+            #else: # Passed parity check
         elif((tmp.bin[3:8] == self.num.bin) or (tmp.bin[3:8] == '11111')): # If this is some other word meant for this terminal, or broadcast
             if(tmp.bin[3:8] == '11111'):
                 print("This message was a broadcast!")
-                pass
             if(tmp[0] == 1 and tmp[1] == 0 and tmp[2] == 1): # If a command word 101
-                print("Command Word received!\nMode code is: " + tmp.bin[14:19])
-                # Send the mode code to the processor function
-                self.process_mode_code(BitArray('0b' + tmp.bin[14:19]))
-                pass
+                # Check to see if the command word contains a Mode Code or a Word Count
+                if((tmp[9:14] == "00000") or tmp[9:14] == "11111"): # If subaddress field is either of these, it is a mode code in the next 5-bit field
+                    print("Command Word received!\nMode code is: " + tmp.bin[14:19])
+                    # Send the mode code to the processor function
+                    self.process_mode_code(BitArray('0b' + tmp.bin[14:19]))
+                #else: # This command word is permitting the terminal to send data words. The BC should not be receiving these types of messages!
+            if(tmp.count(1) % 2 == 0): # Failed parity check
+                self.error = 1
+            #else: # Passed parity check
             elif(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 1): # If a status word 111
                 print("Status Word received!\nStatus was-\nError Flag: " + tmp.bin[8] + "\nService Request: " + tmp.bin[10] + "\nBusy bit: " + tmp.bin[15])
-                pass
-        else: # This terminal was definitely not the intended recipient of the message
-            pass
+                pass #TODO: Define behavior when status words are recieved
+                if(tmp.count(1) % 2 == 0): # Failed parity check
+                    self.error = 1
+            #else: # Passed parity check
+        #else: # This terminal was definitely not the intended recipient of the message
         ##TODO: Add code to process the read in message (temp). This includes:
         #-Finding if the message is addressed to this device or is broadcast
         #-If this device was meant to get the message, process it
@@ -185,7 +204,9 @@ class bc(object):
         to write to the bus, it will do so.'''
         if((self.write_permission == False) or (len(self.events) == 0)): # If there is no permission to write anything or nothing to write, return immediately.
             return
-        self.databus.write_BitArray(self.event_to_word(self.events.pop()))
+        print("Writing a message to the bus!")
+        #TODO: Better define write conditions and behavior
+        #self.databus.write_BitArray(self.event_to_word(self.events.pop()))
         return
 
     # Read data bit from bus
@@ -209,10 +230,43 @@ class bc(object):
     ## TODO: Finish this
     # Event Handler
     def event_handler(self):
-        
-        return
+        if len(self.events > 0):
+            # Remove leftmost (oldest) item in events deque and put it in temp var
+            event = self.events.popleft()
+            
+            # If event is supposed to repeat, do this
+            if (int(event[2]) == 1):
+                # Decrement the num occurences if num occurences > 0 and not inf (-1), put back on right of events list 
+                if (int(event[4]) > 0):
+                    event[4] = str(int(event[4]) - 1)
+                    self.events.append(event)
+                
+                elif (int(event[4]) == -1):
+                    self.events.append(event)
+            
 
+            ## TODO: Call functions for transfer types for RT->BC, RT->RT
+            # BC -> RT
+            if (event[0][:2] == "BT" and event[1][:2] == "RT"):
+                print("BC to RT transfer!")
+                # Do the BC->RT transfer
+                self.BC_RT_Transfer(int(event[1][-2:]), event[6])
+                return
+            # RT -> BC
+            elif (event[0][:2] == "RT" and event[1][:2] == "BC"):
+                print("RT to BC transfer!")
 
+            # RT -> RT
+            elif (event[0][:2] == "RT" and event[1][:2] == "RT"):
+                print("RT to RT transfer!")
+
+            return
+
+            
+        else:
+            return
+
+    ## TODO: Add read_message_timer and write_message_timer for logic
     # BC -> RT
     ## Bus Controller to Remote Terminal Transfer
     ## The Bus Controller sends one 16-bit receive command word
@@ -220,33 +274,35 @@ class bc(object):
     ## The selected Remote Terminal then sends a single 16-bit Status word.
     def BC_RT_Transfer(self, rt_num_rx, data):
         
-        # calculate msg_count, based on the length of the data being passed in
-        # this calculation will be used for creation of the command word and data words for this transfer
-        if (len(data) % 2 == 0):
-            msg_count = len(data) / 2
-        else:
-            msg_count = ceil(len(data) / 2)
-        
-        i = len(data)
-        ## TODO: Finish this
-        #while (i > 0):
-        #    x =
-    
+        array = self.string_to_tokens(data)
+
+        msg_count = len(array)
+
+        bit_string_list = []
+
+        for strn in array:
+            bs  = Bits('0b'+(''.join(format(i, '08b') for i in bytearray(strn, encoding='utf-8'))))
+            bit_string_list.append(bs)     
+
+
         # Create and issue the command word for the receiving RT
         tmp_msg_rx     =    self.create_command_word(rt_num_rx, self.rx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_rx)
         
         # Create and issue 1 to 32 16-bit data words
-        for msg in msg_count:
-            data_msg     =    self.create_data_word(data)
+        for bs in bit_string_list:
+            data_msg     =    self.create_data_word(bs)
             self.issue_data_word(data_msg)
-            return
+            
             
         
         # Create and issue the status word from the receiving RT
-        rt_status      =    self.create_status_word(rt_num_rx, rt_num_rx.msg_err, rt_num_rx.rcvd_broadcast, rt_num_rx.dynamic_bus)
-        self.issue_status_word(rt_status)
+        rt_status_word      =    self.read_message()
         
+        if (self.validate_status_word(rt_status_word) == 0):
+            print("RT has successfully received the message from BC.")
+        else:
+            print("***STATUS MESSAGE ERROR***")
         return
 
     # RT -> BC
@@ -256,15 +312,11 @@ class bc(object):
     ## immediately followed by 1 to 32 words.
     def RT_BC_Transfer(self, rt_num_tx, data):
         
-        # calculate msg_count, based on the length of the data being passed in
-        # this calculation will be used for creation of the command word and data words for this transfer
-        if (len(data) % 2 == 0):
-            msg_count = len(data) / 2
-        else:
-            msg_count = ceil(len(data) / 2)
-
+        array = self.string_to_tokens
+        msg_count = len(
+array)
         # Create and issue the command word for the transmitting RT
-        tmp_msg_tx     =    self.create_command_word(rt_num_tx, 1, self.zero, msg_count)
+        tmp_msg_tx     =    self.create_command_word(rt_num_tx, self.tx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_tx)
         
         # Create and issue the status word from the transmitting RT
@@ -403,12 +455,8 @@ class bc(object):
                     self.received_data.append(msg)
                     
             if (len(self.received_data) != msg_count):
-                print("Not all messages were received")
+                print("Not all messages were received.")
             
-
-            
-
-
     # Mode Command w/ Data Word Receive
     # The bus controller shall issue a receive command word to the RT using a 
     # mode code specified in Table3-1. The mode code will be (9, 16-21) The RT shall, after a command 

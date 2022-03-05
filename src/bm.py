@@ -22,9 +22,10 @@ class bm(object):
         self.main()
 
     # BM Constructor, with filename pre-defined by function input
-    def __init__(self, terminal, sync_freq, filename):
+    #TODO: Since Python doesn't allow multiple _init_s for different argument counts, find a workaround...
+    #def __init__(self, terminal, sync_freq, filename):
         '''This is the argumented initializer of the bus monitor object, setting a custom filename for the resulting json'''
-        # Initialize BM variables
+        '''# Initialize BM variables
         self.num                = BitArray(uint=terminal, length=5) # Value indicating the terminal the bus monitor is listening from
         self.current_filename   = filename                          # String containing the name of the .json to log events to
         self.frequency          = sync_freq                         # Time, in seconds, of how often the bus is checked
@@ -36,7 +37,7 @@ class bm(object):
             self.current_filename.append('.json')
         # Begin normal BM behavior
         self.bus = bus()
-        self.main()
+        self.main()'''
 
     def return_terminal_num(self):
         '''This returns the value of the remote terminal this BM object is meant to act through'''
@@ -58,7 +59,7 @@ class bm(object):
         # Is there anything new on the bus?
         if(tmp_message == self.last_message):
             # Probably nothing new to log, ignore what is on the bus
-            #TODO: Possibly add some logic here to make sure valid duplicate data words are still logged?
+            # Possibly add some logic here to make sure valid duplicate data words are still logged?
             #--- MAYBE Add some logic somewhere that clears the bus (0x00000) before write time every time???
             return
         # Else, there is something new to log. So do that.
@@ -75,18 +76,23 @@ class bm(object):
             if((tmp_message[9:14] == "00000") or tmp_message[9:14] == "11111"): # If subaddress field is either of these, it is a mode code in the next 5-bit field
                 bus_event["Command Type"] = "Mode Code"
                 bus_event["Mode Code Raw"] = tmp_message.bin[14:19]
-                #TODO: Add or replace code to actually parse out which mode code is being used
             else:
                 bus_event["Command Type"] = "Word Count"
         elif(tmp_message[0] == 1 and tmp_message[1] == 1 and tmp_message[2] == 1): # If a status word 111...
             bus_event["Message Type"] = "Status"
             bus_event["Recipient RT"] = int("0b" + tmp_message.bin[3:8], 2)
-            #TODO: Parse out relevent fields to log 
+            bus_event["Message Error Flag"] = tmp_message[8]
+            bus_event["Service Request Flag"] = tmp_message[10]
+            bus_event["Busy Bit"] = tmp_message[15]
         else:
             bus_event["Message Type"] = "Error"
-        #TODO: Any other things that need to be logged to the json should probably be recorded here...
+        if(tmp_message.count(1) % 2 == 0):
+            bus_event["Parity"] = "Failed"
+        else:
+            bus_event["Parity"] = "Passed"
+        # Any other things that need to be logged to the json should probably be recorded here.
+        self.log_to_json(bus_event)
         # Keep a temporary copy of the last message for future comparisons.
-        # Indicate if the whole word passes its parity check
         self.last_message = tmp_message
         return
 
