@@ -37,6 +37,9 @@ class bc(object):
         self.dwords_stored      = ""        # Stores a string of data words as they come in, eventually being output to the terminal.
         self.write_permission   = False     # Keeps track of if the BC is the one who should be writing to the bus this cycle
 
+        # For Timer functions, create a variable to check if the object still exists before looping execution
+        self.exists = "Yes!"
+
         # Begin normal BC behavior
         self.main()
         return
@@ -154,9 +157,12 @@ class bc(object):
     
     def read_message_timer(self, delay):
         '''Version of read_message that loops execution indefinitely and makes use of any important messages'''
-        #threading.Timer(delay, self.read_message_timer, [delay]).start()
-        writeTime = float(delay) - (float(delay)/float(5)) # Time near the end of cycle where the terminal should write if it needs to
-        threading.Timer(writeTime, self.write_message_timer).start()
+        #if(self.exists == "Yes!"):
+        #   threading.Timer(delay, self.read_message_timer, [delay]).start()
+        #   writeTime = float(delay) - (float(delay)/float(5)) # Time near the end of cycle where the terminal should write if it needs to
+        #   threading.Timer(writeTime, self.write_message_timer).start()
+        #else:
+        #   return
         tmp = self.read_message()
         #print(tmp) # Debug line
         if(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 0 and (self.dwords_expected > 0)): # If a data word 110, and we are expecting a data word
@@ -219,12 +225,23 @@ class bc(object):
         self.databus.write_BitArray(msg)
 
 
-    ## TODO: Actually figure out the logic of the bus running
     def main(self):
-        pass
+        while True:
+            # If databus is in use, then pass this loop
+            if (self.databus.is_in_use()):
+                sleep(0.1)
+                pass
+            
+            # Otherwise, handle events in the event list
+            else:
+                self.event_handler()
+                sleep(0.1)
+                pass
+
 
     # BC Destructor
     def __del__(self):
+        self.exists = "No."
         del(self)
 
     ## TODO: Finish this
@@ -244,24 +261,31 @@ class bc(object):
                 elif (int(event[4]) == -1):
                     self.events.append(event)
             
-
-            ## TODO: Call functions for transfer types for RT->BC, RT->RT
             # BC -> RT
             if (event[0][:2] == "BT" and event[1][:2] == "RT"):
                 print("BC to RT transfer!")
                 # Do the BC->RT transfer
                 self.BC_RT_Transfer(int(event[1][-2:]), event[6])
                 return
+
             # RT -> BC
             elif (event[0][:2] == "RT" and event[1][:2] == "BC"):
                 print("RT to BC transfer!")
+                # Do the RT->BC transfer
+                self.RT_BC_Transfer(int(event[1][-2:]), event[6])
+                return
 
             # RT -> RT
             elif (event[0][:2] == "RT" and event[1][:2] == "RT"):
                 print("RT to RT transfer!")
+                # Do the RT->RT transfer
+                self.RT_RT_Transfer(int(event[1][-2:]), int(event[0][-2:]), event[6])
+                return
 
-            return
-
+            # Otherwise, undefined transfer
+            else: 
+                print("Event undefined transfer! ", event[0], "->", event[1])
+                return
             
         else:
             return
@@ -274,35 +298,46 @@ class bc(object):
     ## The selected Remote Terminal then sends a single 16-bit Status word.
     def BC_RT_Transfer(self, rt_num_rx, data):
         
+        # Creates an array of two characters that will later be turning into 16 bit data words
         array = self.string_to_tokens(data)
 
+        # Creates a message count to pass to the create command word function to tell the RT how many words to rx
         msg_count = len(array)
 
         bit_string_list = []
 
+        # Create list of bit strings
         for strn in array:
             bs  = Bits('0b'+(''.join(format(i, '08b') for i in bytearray(strn, encoding='utf-8'))))
             bit_string_list.append(bs)     
 
-
+        
         # Create and issue the command word for the receiving RT
         tmp_msg_rx     =    self.create_command_word(rt_num_rx, self.rx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_rx)
+        sleep(1)
         
         # Create and issue 1 to 32 16-bit data words
         for bs in bit_string_list:
+            sleep(1)
             data_msg     =    self.create_data_word(bs)
             self.issue_data_word(data_msg)
             
             
         
         # Create and issue the status word from the receiving RT
+        sleep(2)
         rt_status_word      =    self.read_message()
         
         if (self.validate_status_word(rt_status_word) == 0):
             print("RT has successfully received the message from BC.")
+            self.error = 0
         else:
             print("***STATUS MESSAGE ERROR***")
+            self.error = 1
+            return
+        
+        print("The transfer from BC to RT " + rt_num_rx + " has terminated.")
         return
 
     # RT -> BC
@@ -312,26 +347,46 @@ class bc(object):
     ## immediately followed by 1 to 32 words.
     def RT_BC_Transfer(self, rt_num_tx, data):
         
-        array = self.string_to_tokens
-        msg_count = len(
-array)
+        # Creates an array of two characters that will later be turning into 16 bit data words
+        array = self.string_to_tokens(data)
+
+        # Creates a message count to pass to the create command word function to tell the RT how many words to send
+        msg_count = len(array)     
+        
         # Create and issue the command word for the transmitting RT
         tmp_msg_tx     =    self.create_command_word(rt_num_tx, self.tx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_tx)
         
-        # Create and issue the status word from the transmitting RT
-        rt_status      =    self.create_status_word(rt_num_tx, rt_num_tx.msg_err, rt_num_tx.rcvd_broadcast, rt_num_tx.dynamic_bus)
-        self.issue_status_word(rt_status)
+        # Waits for a status word to be received from the transmitting RT and validate it
+        rt_status_word      =    self.read_message()
         
-        # Create and issue 1 to 32 16-bit data words
-        for msg in msg_count:
-            data_msg     =    self.create_data_word(data)
-            self.issue_data_word(data_msg)
+        if (self.validate_status_word(rt_status_word) == 0):
+            print("RT " + rt_num_tx + " is sending messages to BC")
+            self.error = 0
+        else:
+            print("***STATUS MESSAGE ERROR***")
+            self.error = 1
             return
         
-        return
+        # Receive messages from the transmitting RT and decode the data words back into a message
+        data_word_list = []
+
+        for msg in range(0,msg_count):
+                msg = self.read_message()
+                char1 = chr(int(msg[0:8], 2))
+                char2 = chr(int(msg[8:], 2))
+                data_word_list.append(char1 + char2)
+
+        for i in data_word_list:
+                message += i
+
+        print("The message received from " + rt_num_tx + " is " + message)
+        
+        
+        return ("The transfer from RT " + rt_num_tx + " to BC has terminated")
 
 
+    # TODO: Finish this function
     # RT -> RT
     ## Remote Terminal to Remote Terminal Transfer
     ## The Bus Controller sends out one receive command word 
@@ -341,34 +396,45 @@ array)
     ## The receiving Terminal then sends its Status word.
     def RT_RT_Transfer(self, rt_num_rx, rt_num_tx, data):
         
-        # calculate msg_count, based on the length of the data being passed in
-        # this calculation will be used for creation of the command word and data words for this transfer
-        if (len(data) % 2 == 0):
-            msg_count = len(data) / 2
-        else:
-            msg_count = ceil(len(data) / 2)
+        # Creates an array of two characters that will later be turning into 16 bit data words
+        array = self.string_to_tokens()
+
+        # Creates a message count to pass to the create command word function to tell the RT how many words to send
+        msg_count = len(array)
 
         # Create and issue the command word for the receiving RT
         tmp_msg_rx    =  self.create_command_word(rt_num_rx, self.rx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_rx)
+        sleep(0.5)
         
         # Create and issue the command word for the transmitting RT
         tmp_msg_tx    =  self.create_command_word(rt_num_tx, self.tx, self.zero, msg_count)
-        self.issue_command_word(tmp_msg_rx)
+        self.issue_command_word(tmp_msg_tx)
+        sleep(0.5)
         
-        # Create and issue the status word from the transmitting RT
-        rt_status_tx  = self.create_status_word(rt_num_tx, rt_num_tx.msg_err, rt_num_tx.rcvd_broadcast, rt_num_tx.dynamic_bus)
-        self.issue_status_word(rt_status_tx)
+        # Wait for transmitting RT to send a status word back and validate the status word
+        sleep(2)
+        rt_status_tx  = self.read_message()
         
-        # Create and issue 1 to 32 16-bit data words
-        for msg in msg_count:
-            data_msg     =    self.create_data_word(data)
-            self.issue_data_word(data_msg)
+        if (self.validate_status_word(rt_status_tx) == 0):
+            print("RT " + rt_num_tx + " is sending messages to RT " + rt_num_rx + ".")
+            self.error = 0
+        else:
+            print("***STATUS MESSAGE ERROR***")
+            self.error = 1
             return
-        
+
+         
         # Create and issue the status word from the receiving RT
-        rt_status_rx  = self.create_status_word(rt_num_rx, rt_num_rx.msg_err, rt_num_rx.rcvd_broadcast, rt_num_rx.dynamic_bus)
-        self.issue_status_word(rt_status_rx)
+        rt_status_rx  = self.read_message()
+        
+        if (self.validate_status_word(rt_status_rx) == 0):
+            print("RT " + rt_num_rx + " is finished receiving messages from RT " + rt_num_tx + ".")
+            self.error = 0
+        else:
+            print("***STATUS MESSAGE ERROR***")
+            self.error = 1
+            return
         
         return
          

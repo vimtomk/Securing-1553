@@ -1,0 +1,2 @@
+Src,Dst,Repeat?,Freq (Hz),Num_Occurences,Msg Type,Data (str)
+BC,RT03,N,1,2,data,Hello

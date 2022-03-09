@@ -43,6 +43,9 @@ class rt(object):
         
         self.events             = deque() # A list of events (str arrays) that come from 1553_simulator
 
+        # For Timer functions, create a variable to check if the object still exists before looping execution
+        self.exists = "Yes!"
+
         # Start listening immediately
         #self.main()
 
@@ -63,9 +66,12 @@ class rt(object):
 
     def read_message_timer(self, delay):
         '''Version of read_message that loops execution indefinitely and makes use of any important messages'''
-        #threading.Timer(delay, self.read_message_timer, [delay]).start()
-        writeTime = float(delay) - (float(delay)/float(5)) # Time near the end of cycle where the terminal should write if it needs to
-        threading.Timer(writeTime, self.write_message_timer).start()
+        #if(self.exists == "Yes!"):
+        #   threading.Timer(delay, self.read_message_timer, [delay]).start()
+        #   writeTime = float(delay) - (float(delay)/float(5)) # Time near the end of cycle where the terminal should write if it needs to
+        #   threading.Timer(writeTime, self.write_message_timer).start()
+        #else:
+        #   return
         tmp = self.read_message()
         #print(tmp) # Debug line
         if(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 0): #and (self.dwords_expected > 0)): # If a data word 110, and we are expecting a data word
@@ -270,7 +276,7 @@ class rt(object):
     # Main loop for listening to bus.
     def main(self):
 
-        while(1):
+        while True:
             
             ## TODO: Once logic is understood for each transfer type, 
             # implement the if-else, and set up contextual decision making
@@ -379,4 +385,5 @@ class rt(object):
 
     # RT Destructor
     def __del__(self):
+        self.exists = "No."
         del(self)

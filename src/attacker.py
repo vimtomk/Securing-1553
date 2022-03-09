@@ -12,14 +12,15 @@ from bus import bus
 
 class attacker(object):
 
-    def __init__(self, atk_type, frequency):
+    def __init__(self, atk_type, frequency, terminal_src = 32, terminal_dst = 32):
         '''Initializes an attack of the type "atk_type" from args.
         Different attack types implement different behavior from this class.'''
         if(type(atk_type) is not str):
-            print("First argument should be an attack type. Please use: \nDoS\nEavesdropping\nImitation")
+            print("First argument should be an attack type. Please use: \n\"DoS\"\n\"Eavesdropping\"\n\"Imitation\"")
             self.__del__()
         self.atk = atk_type
         self.bus = bus()
+        self.exists = "Yes!"
         if(atk_type == "DoS"):
             self.deny_service(frequency / 10)
         elif(atk_type == "Eavesdropping"):
@@ -29,42 +30,28 @@ class attacker(object):
                 dump(event, event_dumped)
             self.eavesdrop(frequency)
         elif(atk_type == "Imitation"):
-            print("Can't imitate without a designated terminal number! Two ints 0-30 as arguments, src and dst.")
-            self.__del__()
-        else:
-            print("Sorry, that attack type is not recognized or implemented. Exiting...")
-            self.__del__()
-        pass #TODO: Add code to begin execution of different attacks based on input attack type
-
-    #TODO: Since Python doesn't allow multiple _init_s for different argument counts, find a workaround...
-    #def __init__(self, atk_type, frequency, terminal_num_src, terminal_num_dst):
-        '''Initializes an attack of the type "atk_type", specifically "Imitation".
-        An alternate init is required to get the terminal number to imitate.'''
-        '''if(type(atk_type) is not str):
-            print("First argument should be an attack type. Please use: \nDoS\nEavesdropping\nImitation")
-            self.__del__()
-        if(atk_type == "DoS"):
-            print("Too many arguments for this attack type! Did you mean to Imitate?")
-            self.__del__()
-        elif(atk_type == "Eavesdropping"):
-            print("Too many arguments for this attack type! Did you mean to Imitate?")
-            self.__del__()
-        elif(atk_type == "Imitation"):
-            if(terminal_num_src < 0 or terminal_num_src > 30 or (type(terminal_num_src) is not int)):
-                print("That was not a valid terminal number. Please pass an integer from 0-30.")
+            if(terminal_src == 32 or terminal_dst == 32):
+                print("Can't imitate without a designated terminal number! Two ints 0-30 as arguments, src and dst.")
                 self.__del__()
-            if(terminal_num_dst < 0 or terminal_num_dst > 30 or (type(terminal_num_dst) is not int)):
-                print("That was not a valid terminal number. Please pass an integer from 0-30.")
-                self.__del__()
-            self.imitate(terminal_num_src, terminal_num_dst, frequency)
+            else:
+                if(terminal_src < 0 or terminal_src > 30 or (type(terminal_src) is not int)):
+                    print("That was not a valid terminal number. Please pass an integer from 0-30.")
+                    self.__del__()
+                if(terminal_dst < 0 or terminal_dst > 30 or (type(terminal_dst) is not int)):
+                    print("That was not a valid terminal number. Please pass an integer from 0-30.")
+                    self.__del__()
+                self.imitate(terminal_src, terminal_dst, frequency)
             pass #TODO: Define behavior for imitation
         else:
             print("Sorry, that attack type is not recognized or implemented. Exiting...")
-            self.__del__()'''
+            self.__del__()
 
     def deny_service(self, frequency):
         '''Fills the bus with random noise to deny effective communication'''
-        Timer(frequency, self.deny_service, [frequency]).start() # Call repeatedly on a timer
+        if(self.exists == "Yes!"): # Check if the object still exists
+            Timer(frequency, self.deny_service, [frequency]).start() # Call repeatedly on a timer
+        else:
+            return
         self.bus.write_bit(randint(0, 1), randint(0, 19))
         self.bus.write_bit(randint(0, 1), randint(0, 19))
         self.bus.write_bit(randint(0, 1), randint(0, 19))
@@ -118,9 +105,13 @@ class attacker(object):
             self.addtime(event)
             with open(getcwd() + '/io/jsons/stolen.json', 'a') as event_dumped :
                 dump(event, event_dumped)
+        self.exists = "No."
         del(self)
 
 # Examples of use:
-# attacker("DoS", 1) - Randomly sets/clears a bunch of bits on the bus about ten times a second, preventing effective communication
-# attacker("Eavesdropping", 1) - Checks the bus every second and logs its contents. Extracts and logs information from data words.
-# attacker("Imitation", 1, 2, 3) - Sends a pre-coded message to RT03 as though it was from RT02 every second.
+# attacker("DoS", 1) - Randomly sets/clears a bunch of bits on the bus about ten times a second, preventing effective 
+#   communication
+# attacker("Eavesdropping", 1) - Checks the bus every second and logs its contents. Extracts and logs information from 
+#   data words.
+# attacker("Imitation", 1, terminal_src = 2, terminal_dst = 3) - Sends a pre-coded message to RT03 as though it was 
+#   from RT02 every second.

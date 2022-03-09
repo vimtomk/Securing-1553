@@ -10,34 +10,24 @@ import json
 
 class bm(object):
     # BM Constructor
-    def __init__(self, terminal, sync_freq):
+    def __init__(self, terminal, sync_freq, filename = "Not set"):
         '''This is the default initializer of the bus monitor object'''
         # Initialize BM variables
-        self.num                = BitArray(uint=terminal, length=5) # Value indicating the terminal the bus monitor is listening from
-        self.current_filename   = 'Not yet set'                     # String containing the name of the .json to log events to
-        self.frequency          = sync_freq                         # Time, in seconds, of how often the bus is checked
-        self.last_message       = None                              # Keeps track of the last message on the bus, to see if it changed
-        # Begin normal BM behavior
-        self.bus = bus()
-        self.main()
-
-    # BM Constructor, with filename pre-defined by function input
-    #TODO: Since Python doesn't allow multiple _init_s for different argument counts, find a workaround...
-    #def __init__(self, terminal, sync_freq, filename):
-        '''This is the argumented initializer of the bus monitor object, setting a custom filename for the resulting json'''
-        '''# Initialize BM variables
         self.num                = BitArray(uint=terminal, length=5) # Value indicating the terminal the bus monitor is listening from
         self.current_filename   = filename                          # String containing the name of the .json to log events to
         self.frequency          = sync_freq                         # Time, in seconds, of how often the bus is checked
         self.last_message       = None                              # Keeps track of the last message on the bus, to see if it changed
-        # Correct the filename if it lacks ".json"
-        if(len(self.current_filename) < 6):
-            self.current_filename.append('.json')
-        elif(self.current_filename[-5:] != '.json'):
-            self.current_filename.append('.json')
+        # For Timer functions, create a variable to check if the object still exists before looping execution
+        self.exists = "Yes!"
+        # Correct the filename if it lacks ".json", and is not the default case
+        if(self.current_filename != "Not set"):
+            if(len(self.current_filename) < 6):
+                self.current_filename.append('.json')
+            elif(self.current_filename[-5:] != '.json'):
+                self.current_filename.append('.json')
         # Begin normal BM behavior
         self.bus = bus()
-        self.main()'''
+        self.main()
 
     def return_terminal_num(self):
         '''This returns the value of the remote terminal this BM object is meant to act through'''
@@ -54,7 +44,10 @@ class bm(object):
     # Recursive function to periodically record the contents of the bus.
     def record_bus_contents(self):
         '''This will get the contents of the bus and record it every so often'''
-        threading.Timer(self.frequency, self.record_bus_contents).start()
+        if(self.exists == "Yes!"):
+            threading.Timer(self.frequency, self.record_bus_contents).start()
+        else:
+            return
         tmp_message = bus.read_BitArray()
         # Is there anything new on the bus?
         if(tmp_message == self.last_message):
@@ -115,11 +108,12 @@ class bm(object):
 
     def main(self):
         '''Main function'''
-        if(self.current_filename == 'Not yet set'):
+        if(self.current_filename == "Not set"):
             self.defualt_filename_to_date()
         self.record_bus_contents()
     
     # BM Destructor
     def __del__(self):
-        '''This is the destructor of the BM object. It just does del(self)'''
+        '''This is the destructor of the BM object.'''
+        self.exists = "No."
         del(self)
