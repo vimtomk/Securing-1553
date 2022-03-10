@@ -50,7 +50,8 @@ def main():
     remote_terminals = []
     for rt_num in rt_nums:
         remote_terminals.append(rt.rt(int(rt_num)))
-    bus_controller  = bc.bc(bc_num, remote_terminals) # Bus controller is passed a list of pointers to all RT instances
+    bus_controller  = bc.bc(bc_num, rt_nums) # Bus controller is passed a list of all RT numbers
+    #remote_terminals) # Bus controller is passed a list of pointers to all RT instances <-- OUTDATED ARG TO BC CONSTRUCTOR
     
     # Set everything to begin listening in periodically at the same time interval
     threading.Timer(time_interval, bus_controller.read_message_timer(time_interval)).start
@@ -83,5 +84,13 @@ def main():
 
     # On Keyboard Interrupt, exit the program and deallocate memory
     except KeyboardInterrupt:
-        ## TODO: Del everything we spawn
+        # Delete all RTs
+        for terminal in remote_terminals:
+            terminal.__del__()
+        # Delete BM
+        bus_monitor.__del__()
+        # Delete BC
+        bus_controller.__del__()
+        # Delete bus - Comment out if other objects not created in this file are still relying on the bus to work.
+        databus.__del__()
         exit()

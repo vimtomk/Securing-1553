@@ -105,12 +105,14 @@ class bm(object):
         dictionary['time_minute'] = temp_dt.strftime('%M')
         dictionary['time_second'] = temp_dt.strftime('%S')
         dictionary['time_microsecond'] = temp_dt.strftime('%f')
+        return
 
     def main(self):
         '''Main function'''
         if(self.current_filename == "Not set"):
             self.defualt_filename_to_date()
         self.record_bus_contents()
+        return
     
     # BM Destructor
     def __del__(self):

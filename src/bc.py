@@ -37,7 +37,7 @@ class bc(object):
         self.dwords_stored      = ""        # Stores a string of data words as they come in, eventually being output to the terminal.
         self.write_permission   = False     # Keeps track of if the BC is the one who should be writing to the bus this cycle
 
-        # For Timer functions, create a variable to check if the object still exists before looping execution
+        # For Timer functions, create a variable to check if the BC object still exists before looping execution
         self.exists = "Yes!"
 
         # Begin normal BC behavior
@@ -86,7 +86,6 @@ class bc(object):
     # Define other functions of a BC here
     def queue_message(self, command):
         '''Takes a command in from 1553_simulator.py and turns it into an event/s and adds it/them to the back of the queue'''
-        #TODO: Re-write / modify this function to correctly handle queueing events given the new requirements and format of inputs
         self.events.append(command)
         return
 
@@ -132,15 +131,14 @@ class bc(object):
                     # Check if status word from correct RT
                     if (int(tmp_msg.msg.bin[3:8], base=2) == rt):
                         # If no parity error, then process message
-                        if (tmp_msg.msg.check_err()):
-                            return
-                        
-                        ## TODO: Check if we can do that
+                        if(tmp_msg.count(1) % 2 == 0):
+                            # Parity Error
+                            print("Parity error!")
+                            pass
                         # If there is a parity error, may want RT to resend
                         else:
-                            print("Parity error!")
-                            return
-                        return
+                            # No Parity Error
+                            pass
 
                 # If message is not status word, wait a min and continue
                 else:
@@ -171,7 +169,6 @@ class bc(object):
                 self.dwords_expected = self.dwords_expected - 1
             else: # This terminal is not expecting data words. Stop reading.
                 return
-            pass #TODO: Define what to do with data words
             self.dwords_stored.append(chr(int(tmp.bin[3:11],2)) + chr(int(tmp.bin[11:19],2)))
             if(self.dwords_expected == 0):
                 print(self.dwords_stored)
@@ -199,11 +196,6 @@ class bc(object):
                     self.error = 1
             #else: # Passed parity check
         #else: # This terminal was definitely not the intended recipient of the message
-        ##TODO: Add code to process the read in message (temp). This includes:
-        #-Finding if the message is addressed to this device or is broadcast
-        #-If this device was meant to get the message, process it
-        #-If this device was meant to respond to the message, prepare a response
-        ##TODO: Wherever a "pass" is in this function, there needs to be code that defines the terminal behavior in that situation...
 
     def write_message_timer(self):
         '''At the end of a time interval, this function is called and if the terminal has a need and the permissions
@@ -244,7 +236,7 @@ class bc(object):
         self.exists = "No."
         del(self)
 
-    ## TODO: Finish this
+
     # Event Handler
     def event_handler(self):
         if len(self.events > 0):
@@ -262,7 +254,7 @@ class bc(object):
                     self.events.append(event)
             
             # BC -> RT
-            if (event[0][:2] == "BT" and event[1][:2] == "RT"):
+            if (event[0][:2] == "BC" and event[1][:2] == "RT"):
                 print("BC to RT transfer!")
                 # Do the BC->RT transfer
                 self.BC_RT_Transfer(int(event[1][-2:]), event[6])
@@ -356,9 +348,11 @@ class bc(object):
         # Create and issue the command word for the transmitting RT
         tmp_msg_tx     =    self.create_command_word(rt_num_tx, self.tx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_tx)
+        sleep(1)
         
         # Waits for a status word to be received from the transmitting RT and validate it
         rt_status_word      =    self.read_message()
+        sleep(1)
         
         if (self.validate_status_word(rt_status_word) == 0):
             print("RT " + rt_num_tx + " is sending messages to BC")
@@ -376,17 +370,16 @@ class bc(object):
                 char1 = chr(int(msg[0:8], 2))
                 char2 = chr(int(msg[8:], 2))
                 data_word_list.append(char1 + char2)
+                sleep(1)
 
         for i in data_word_list:
                 message += i
 
         print("The message received from " + rt_num_tx + " is " + message)
         
-        
         return ("The transfer from RT " + rt_num_tx + " to BC has terminated")
 
 
-    # TODO: Finish this function
     # RT -> RT
     ## Remote Terminal to Remote Terminal Transfer
     ## The Bus Controller sends out one receive command word 
@@ -405,16 +398,16 @@ class bc(object):
         # Create and issue the command word for the receiving RT
         tmp_msg_rx    =  self.create_command_word(rt_num_rx, self.rx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_rx)
-        sleep(0.5)
+        sleep(1)
         
         # Create and issue the command word for the transmitting RT
         tmp_msg_tx    =  self.create_command_word(rt_num_tx, self.tx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_tx)
-        sleep(0.5)
+        sleep(1)
         
         # Wait for transmitting RT to send a status word back and validate the status word
-        sleep(2)
         rt_status_tx  = self.read_message()
+        sleep(1)
         
         if (self.validate_status_word(rt_status_tx) == 0):
             print("RT " + rt_num_tx + " is sending messages to RT " + rt_num_rx + ".")
@@ -427,6 +420,7 @@ class bc(object):
          
         # Create and issue the status word from the receiving RT
         rt_status_rx  = self.read_message()
+        sleep(1)
         
         if (self.validate_status_word(rt_status_rx) == 0):
             print("RT " + rt_num_rx + " is finished receiving messages from RT " + rt_num_tx + ".")

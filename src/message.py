@@ -59,6 +59,8 @@ class message(object):
 
     # Check if there is error in message
     def check_err(self):
+        '''Checks a message for a parity error, assuming ODD parity.
+        Returns true if there is an error, false otherwise.'''
         # Calculate parity and compare it to the current parity bit
         if (BitArray(uint=(self.msg.count(1)) % 2 == 0, length=1) and self.msg.parity_bit.bin):
             return False
@@ -69,7 +71,7 @@ class message(object):
     def __del__(self):
         del(self)
 
-class command_word:
+class command_word(message):
     
     def create_command_word_with_data(self, data):
         self.msg_type   = BitArray(uint=5,      length=3)
@@ -85,9 +87,8 @@ class command_word:
         
     # Once parity is calculated, prepend the msg type.
         self.msg.prepend(self.msg_type)
-
         return self.msg
-        
+
 
     # Initialize each message field, turn the data to binary, and pack the bits.
     def create_command_word(rt_addr, tx_rx, sa_mode, mode_code):
@@ -107,16 +108,14 @@ class command_word:
         
     # Once parity is calculated, prepend the msg type.
         msg.prepend(msg_type)
-
         return msg
 
-class data_word:
-    
+class data_word(message):
 
     # Initialize each message field, turn the data to binary, and pack the bits.
     def create_data_word(self, data):
         self.msg_type = BitArray(uint=6,        length=3)   # 3 bit field
-        self.data     = BitArray(uint=data,     length=16)  # 16 bit field
+        self.data     = BitArray(uint=data.uint,     length=16)  # 16 bit field
         
     # Create the "data" part of the message.
         self.msg = BitArray(self.data)
@@ -126,24 +125,22 @@ class data_word:
         
     # Once parity is calculated, prepend the msg type.
         self.msg.prepend(self.msg_type)
-
         return self.msg.bin
         
+class status_word(message):
 
-class status_word:
-
-    def create_status_word_with_data(self, data): # data is a 
-        self.msg_type   = BitArray(uint=7, length=3)  # 3 bit field
-        self.rt_addr    = data.bin[0:5]   # Five bit field
-        self.msg_err    = data.bin[5]     # One bit flag
-        self.instrum    = data.bin[6]     # One bit flag
-        self.serv_req   = data.bin[7]     # One bit flag
-        self.reserved   = data.bin[8:11]  # Three bit flag
-        self.broad_comm = data.bin[11]    # One bit flag
-        self.busy       = data.bin[12]    # One bit flag
-        self.sub_flag   = data.bin[13]    # One bit flag
-        self.dyn_bc     = data.bin[14]    # One bit flag
-        self.term_flag  = data.bin[15]    # One bit flag
+    def create_status_word_with_data(self, data):    # data is a 
+        self.msg_type   = BitArray(uint=7, length=3) # 3 bit field
+        self.rt_addr    = data.bin[0:5]              # Five bit field
+        self.msg_err    = data.bin[5]                # One bit flag
+        self.instrum    = data.bin[6]                # One bit flag
+        self.serv_req   = data.bin[7]                # One bit flag
+        self.reserved   = data.bin[8:11]             # Three bit flag
+        self.broad_comm = data.bin[11]               # One bit flag
+        self.busy       = data.bin[12]               # One bit flag
+        self.sub_flag   = data.bin[13]               # One bit flag
+        self.dyn_bc     = data.bin[14]               # One bit flag
+        self.term_flag  = data.bin[15]               # One bit flag
 
         # Create the "data" part of the message.
         self.msg = BitArray(data)
@@ -203,15 +200,3 @@ str = "Hello"
 bs  = Bits('0b'+(''.join(format(i, '08b') for i in bytearray(str, encoding='utf-8'))))
 bs.bin
 """
-
-# Explanation of each message type, all are 20 bits
-#-----------
-#-Data-Word-
-#-----------
-# Type | Data             | Parity
-# 000  | 0000000000000000 | 0
-#--------------
-#-Command-Word-
-#--------------
-# Type |              | Parity
-# 000  | 0000000000000000 | 0
