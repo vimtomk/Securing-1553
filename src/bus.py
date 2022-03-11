@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 # This file defines the "bus" class and its functionality
 
 from bitstring import BitArray
@@ -81,6 +80,7 @@ class bus(object):
 
     # Tells the caller if the bus is in use or not
     def is_in_use(self):
+        '''Returns a bool indicating if the bus is in use (True/1) or idle (False/0).'''
         return self.in_use
 
     # Destructor. Just deletes the object - DO NOT USE UNTIL EXITING SIMULATION!

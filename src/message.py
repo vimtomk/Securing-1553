@@ -8,20 +8,19 @@ class message(object):
     
         if len(msg) != 20:
             print("ERROR: Message given not equal to 20 bits!")
-            self.__del__()
-            exit()
         
         # The first three bits
-        self.msg_type_bits   = BitArray(uint=msg[0:3], length=3) #[2:5]
+        #self.msg_type_bits   = BitArray(uint=msg[0:3], length=3)   #[2:5]
         # The remaining seventeen bits
-        self.raw_data        = BitArray(uint=msg[3:19], length=16)#[5:-1]
+        #self.raw_data        = BitArray(uint=msg[3:19], length=16) #[5:-1]
         # The last bit
-        self.parity_bit      = BitArray(uint=msg[19], length=1) #[-1:]
+        #self.parity_bit      = BitArray(uint=msg[19], length=1)    #[-1:]
         
         # Construct the whole message
         self.msg             = BitArray(msg)
         
-        # Setting the string msg_type based on bits
+        # Setting the string msg_type based on bits 
+        '''
         if   (self.msg_type_bits.bin == "101"):
             self.msg_type = "Command Word"
         elif (self.msg_type_bits.bin == "110"):
@@ -30,6 +29,7 @@ class message(object):
             self.msg_type = "Status Word"
         else:
             self.msg_type = "Error - Sync is off and is set to: "+self.msg_type_bits.bin
+        '''
         
     # Prints message type bits in literal binary
     def return_message_type_bin(self):
@@ -71,9 +71,10 @@ class message(object):
     def __del__(self):
         del(self)
 
-class command_word(message):
+class command_word(object):
     
-    def create_command_word_with_data(self, data):
+    # This has no type-casting, for some reason, so be sure to only put in 16 bits
+    def create_command_word_with_data(self, data=BitArray(uint=0, length=16)):
         self.msg_type   = BitArray(uint=5,      length=3)
         self.rt_addr    = data.bin[0:5]    # Five bit flag
         self.tx_rx      = data.bin[5]      # One bit flag
@@ -110,7 +111,7 @@ class command_word(message):
         msg.prepend(msg_type)
         return msg
 
-class data_word(message):
+class data_word(object):
 
     # Initialize each message field, turn the data to binary, and pack the bits.
     def create_data_word(self, data):
@@ -127,7 +128,7 @@ class data_word(message):
         self.msg.prepend(self.msg_type)
         return self.msg.bin
         
-class status_word(message):
+class status_word(object):
 
     def create_status_word_with_data(self, data):    # data is a 
         self.msg_type   = BitArray(uint=7, length=3) # 3 bit field

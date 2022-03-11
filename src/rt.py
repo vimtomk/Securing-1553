@@ -404,7 +404,7 @@ class rt(object):
                             for i in data_word_list:
                                 message += i
 
-                            print("RT ", self.num + " has received '" + message + "'")
+                            print("RT " +  self.num + " has received '" + message + "'")
 
                         
                             # Send status word back to BC

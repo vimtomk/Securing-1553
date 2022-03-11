@@ -218,6 +218,8 @@ class bc(object):
 
 
     def main(self):
+        #TODO: Implement a version of BC's main() function that allows other devices/threads to execute
+        ## I.e, figure out how to keep BC from holding up all execution when this main() function is called.
         while True:
             # If databus is in use, then pass this loop
             if (self.databus.is_in_use()):
@@ -229,6 +231,7 @@ class bc(object):
                 self.event_handler()
                 sleep(0.1)
                 pass
+        return
 
 
     # BC Destructor
@@ -239,7 +242,7 @@ class bc(object):
 
     # Event Handler
     def event_handler(self):
-        if len(self.events > 0):
+        if(len(self.events) > 0):
             # Remove leftmost (oldest) item in events deque and put it in temp var
             event = self.events.popleft()
             
@@ -351,7 +354,7 @@ class bc(object):
         sleep(1)
         
         # Waits for a status word to be received from the transmitting RT and validate it
-        rt_status_word      =    self.read_message()
+        rt_status_word =    self.read_message()
         sleep(1)
         
         if (self.validate_status_word(rt_status_word) == 0):
