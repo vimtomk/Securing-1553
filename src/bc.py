@@ -191,7 +191,6 @@ class bc(object):
             #else: # Passed parity check
             elif(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 1): # If a status word 111
                 print("Status Word received!\nStatus was-\nError Flag: " + tmp.bin[8] + "\nService Request: " + tmp.bin[10] + "\nBusy bit: " + tmp.bin[15])
-                pass #TODO: Define behavior when status words are recieved
                 if(tmp.count(1) % 2 == 0): # Failed parity check
                     self.error = 1
             #else: # Passed parity check
@@ -203,7 +202,6 @@ class bc(object):
         if((self.write_permission == False) or (len(self.events) == 0)): # If there is no permission to write anything or nothing to write, return immediately.
             return
         print("Writing a message to the bus!")
-        #TODO: Better define write conditions and behavior
         #self.databus.write_BitArray(self.event_to_word(self.events.pop()))
         return
 
@@ -218,19 +216,14 @@ class bc(object):
 
 
     def main(self):
-        #TODO: Implement a version of BC's main() function that allows other devices/threads to execute
-        ## I.e, figure out how to keep BC from holding up all execution when this main() function is called.
-        while True:
-            # If databus is in use, then pass this loop
-            if (self.databus.is_in_use()):
-                sleep(0.1)
-                pass
-            
-            # Otherwise, handle events in the event list
-            else:
-                self.event_handler()
-                sleep(0.1)
-                pass
+        # Loop the execution of BC frequently, and let it orchestrate bus communications
+        if(self.exists == "Yes!"): # If the BC has been removed, stop execution
+            threading.Timer(.1, self.main()).start()
+        else:
+            return
+        # Handle events in the event list if the databus free to be use
+        if (not(self.databus.is_in_use())):
+            self.event_handler()
         return
 
 
@@ -443,7 +436,6 @@ class bc(object):
     def MC_without_DW(self, rt_num, mode_code):
             tmp_msg = self.create_command_word(rt_num, self.tx, self.zero, mode_code)
             
-            ##TODO: Use Julien's function
             self.databus.write_BitArray(tmp_msg)
             # Over two seconds, look for a status word from the RT (each .25 
             # secs). If one isn't returned, assume the RT is dead.

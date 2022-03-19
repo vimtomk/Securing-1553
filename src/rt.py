@@ -152,7 +152,6 @@ class rt(object):
         if((self.write_permission == 0) or (len(self.events) == 0)): # If there is no permission to write anything or nothing to write, return immediately.
             return
         print("Writing a message to the bus!")
-        #TODO: Better define write conditions and behavior
         #self.databus.write_BitArray(self.event_to_word(self.events.pop()))
         return
 
@@ -189,12 +188,13 @@ class rt(object):
 
         return
 
-    ## TODO: Finish adding all desired functionality in response to mode code command words
     def process_mode_code(self, mode_code):
         if  (mode_code==BitArray(uint=0, length=5)):	# case 0:  Dynamic Bus Control | No Data Word Associated
+            # We are not doing Dynamic Bus Control at this time, but it is valid
             return 
         
         elif (mode_code==BitArray(uint=1, length=5)):	# case 1:  Synchronize (without a data word) | No Data Word Associated
+            # Given the nature of this simulation, and the limitations of Python, there is no need / reasonable ability to sync
             return 
 
         elif (mode_code==BitArray(uint=2, length=5)):	# case 2:  Transmit Status Word | No Data Word Associated
@@ -206,6 +206,7 @@ class rt(object):
             return 
 
         elif (mode_code==BitArray(uint=3, length=5)):	# case 3:  Initiate Self Test |  No Data Word Associated
+            # There will be no Built-In-Test (BIT) for these RTs. This will just send status.
             self.databus.write_BitArray(sendable_status_word)
             return
         
@@ -251,8 +252,6 @@ class rt(object):
             self.dynamic_bus        = BitArray(uint=0, length=1)
             self.terminal           = BitArray(uint=0, length=1)
             return
-        
-
 
         elif (mode_code==BitArray(uint=9, length=5)):   # case 9: Receive Bus Controller Public Key | 4 Data Words Associated
             # Send status word FIRST
@@ -268,11 +267,7 @@ class rt(object):
                 sleep(1)
 
             self.BC_public_key = int(str(data_word_list[0], data_word_list[1], data_word_list[2], data_word_list[3]), 16)    
-            
             return
-            
-            
-
 
         elif (mode_code==BitArray(uint=10, length=5)):   # case 10: Transmit Remote Terminal Public Key | 4 Data Words Associated
             # Send status word FIRST
@@ -291,8 +286,7 @@ class rt(object):
                 public_key_dw       =      self.create_data_word(data_word)
                 self.write_message(public_key_dw)
                 sleep(1)
-                    
-                    
+            return
           
         elif (mode_code==BitArray(uint=16, length=5)):	# case 16: Transmit Vector Word | Data Word Associated
             # Send status word FIRST
@@ -303,6 +297,7 @@ class rt(object):
             return
         
         elif (mode_code==BitArray(uint=17, length=5)):	# case 17: Synchronize (with data word) | Data Word Associated
+            # Given the nature of this simulation, and the limitations of Python, there is no need / reasonable ability to sync
             return
         
         elif (mode_code==BitArray(uint=18, length=5)):	# case 18: Transmit Last Command Word | Data Word Associated
@@ -317,18 +312,21 @@ class rt(object):
             
             self.databus.write_BitArray(sendable_status_word)
             
-            sendable_data_word = data_word() #TODO: Set the paramaters of the data word
+            #sendable_data_word = data_word()
             #sendable_data_word.create_data_word()
             
             return
         
         elif (mode_code==BitArray(uint=20, length=5)):	# case 20: Selected Transmitter Shutdown |  Data Word Associated
+            # We are not using redundant bus systems.
             return
         
         elif (mode_code==BitArray(uint=21, length=5)):	# case 21: Override Selected Transmitter Shutdown | Data Word Associated
+            # We are not using redundant bus systems.
             return
         
         else:				                            # default: mode_code not defined, set message error bit
+            print("There was a mode code word recieved, but the meaning is undefined!")
             self.message_error = 1
             return
 
@@ -339,7 +337,8 @@ class rt(object):
 
     # Main loop for listening to bus.
     def main(self):
-
+        # This while-True loop may hold up execution of the whole program if main() is run!
+        # If this does hold up execution, switch to threading version (or just use read_message_timer?)
         while True:
             
             ## TODO: Once logic is understood for each transfer type, 
@@ -351,13 +350,14 @@ class rt(object):
                 tmp_msg = self.read_message()
                 
                 # Use RT method that passes bus queue to RT and processes the first message on the queue
-                if (tmp_msg.rt_addr == self.num) and (tmp_msg.msg_type.bin == "101"): # Command Word
+                if (tmp_msg.bin[3:8] == BitArray(uint=self.num, length=5)) and (tmp_msg.bin[0:3] == "101"): # Command Word
                     
                     # Store copy of relevent bits
                     self.last_command_word = tmp_msg
+                    self.received_msgs.append(tmp_msg)
 
                     # This will set the Remote Terminal's Transfer/Receiving Mode
-                    if tmp_msg.tx_rx == 1:
+                    if tmp_msg[8] == BitArray(uint=1, length=1):
                             # This puts the Remote Terminal in Transfer mode
                             self.rx_tx_mode == BitArray(uint=1, length=1)    
                     else:
@@ -366,18 +366,16 @@ class rt(object):
                     
                     # If the subadress mode is zero or thirty-one the remote terminal will look at the next field
                     # to see what the mode code is and take action accordingly
-                    if (tmp_msg.sa_mode == 0 or tmp_msg.sa_mode == 31):
+                    if (tmp_msg.bin[9:14] == BitArray(uint=0, length=5) or tmp_msg.bin[9:14] == BitArray(uint=31, length=5)):
                     
-                        self.process_mode_code(tmp_msg.sa_mode)
+                        self.process_mode_code(tmp_msg.bin[9:14])
                     
                     # The mode code field will else represent the number of words the RT needs to transmit or receive
                     else:   
                         
                         # Creates a message count of how many words to either transmit or receive
-                        msg_count = tmp_msg.mode_code
-                        
-
-                        #TODO: Finish 
+                        msg_count = tmp_msg.bin[14:19]
+                         
                         # The RT will create data words to transmit 
                         if self.rx_tx_mode == 1:
                             
@@ -385,7 +383,20 @@ class rt(object):
                             sending_msg = self.events.pop()
                             char_pairs = self.string_to_tokens(sending_msg[6])
                             
-                            # Create and send data words
+                            # Create data words
+                            data_send_list = []
+                            for char_pair in char_pairs:
+                                complete_data_word = "0b110" + bin(ord(char_pair[0]))[2:] + bin(ord(char_pair[1]))[2:]
+                                if(complete_data_word.count(1) % 2 == 0):
+                                    complete_data_word = complete_data_word + "1"
+                                else:
+                                    complete_data_word = complete_data_word + "0"
+                                complete_data_word = BitArray(complete_data_word)
+                                data_send_list.append(complete_data_word)
+
+                            # Send data words in time to be taken in by recipient
+                            #TODO: Finish
+                            # This maybe could be handled by queueing up messages for write_message_timer to send out
                             pass
                         
                         # The RT will prepare to receive data words 
@@ -400,40 +411,31 @@ class rt(object):
                                 char1 = chr(int(msg[0:8], 2))
                                 char2 = chr(int(msg[8:], 2))
                                 data_word_list.append(char1 + char2)
+                                sleep(1)
+                                
+                            for ch in data_word_list:
+                                message += ch
 
-                            for i in data_word_list:
-                                message += i
-
-                            print("RT " +  self.num + " has received '" + message + "'")
-
+                            print("RT#" +  self.num + " has received data word with '" + message + "'")
                         
                             # Send status word back to BC
                             status_word = self.create_status_word()
                             self.issue_status_word(status_word)
                             
-                            
-
                 # The RT has received a broadcast message                
                 elif (tmp_msg.rt_addr.bin == BitArray(uint=31, length=5).bin):
                     # Not implementing broadcast functionality at this time...
                     return
 
-                if (tmp_msg.rt_addr == self.num) and (tmp_msg.msg_type.bin == "111") and (self.dynamic_bus == 1): # Status Word
-                    # Not implementing Dynamic BC functionality at this time...
-                    return
-                        
-                if tmp_msg.msg_type.bin == "110": # Data Word
-                    
-                    return
-
-                # We have encountered some type of error in the message type bits 
+                # We have encountered some type of error in the message type bits
                 # (not defined as data/command/status word)
-                else:
-                    print("ERROR: Message Type bits indentifier incorrect (not data/command/status word)!") 
-                    return
+                else: 
+                    print("RT#" + self.num + " has received a word with unknown message type.")
+                    pass
 
             # Databus is either empty, or we are done getting messages so sleep.
             sleep(0.25) # Currently configured : Check each quarter second.
+        return
     
     def queue_message(self, command):
         '''Takes a command in from 1553_simulator.py and turns it into an event and queues it'''
