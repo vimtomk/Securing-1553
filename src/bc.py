@@ -217,13 +217,13 @@ class bc(object):
 
     def main(self):
         # Loop the execution of BC frequently, and let it orchestrate bus communications
-        if(self.exists == "Yes!"): # If the BC has been removed, stop execution
-            threading.Timer(.1, self.main()).start()
-        else:
-            return
-        # Handle events in the event list if the databus free to be use
-        if (not(self.databus.is_in_use())):
-            self.event_handler()
+        if(self.exists == "Yes!"): 
+            # If the BC has been removed, stop execution
+            threading.Timer(1, self.main()).start() #<-- Line will cause a recursion error if the BC is established outside 1553_simulator.py. Unclear why as of now...
+
+            # Handle events in the event list if the databus free to be use
+            if (not(self.databus.is_in_use())):
+                self.event_handler()
         return
 
 

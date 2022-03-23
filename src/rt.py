@@ -339,7 +339,9 @@ class rt(object):
     def main(self):
         # This while-True loop may hold up execution of the whole program if main() is run!
         # If this does hold up execution, switch to threading version (or just use read_message_timer?)
-        while True:
+        if(self.exists == "Yes!"): # If the BC has been removed, stop execution
+            threading.Timer(.25, self.main()).start() # Currently configured : Check each quarter second.
+        #while True:
             
             ## TODO: Once logic is understood for each transfer type, 
             # implement the if-else, and set up contextual decision making
@@ -431,11 +433,13 @@ class rt(object):
                 # (not defined as data/command/status word)
                 else: 
                     print("RT#" + self.num + " has received a word with unknown message type.")
-                    pass
 
             # Databus is either empty, or we are done getting messages so sleep.
-            sleep(0.25) # Currently configured : Check each quarter second.
+            #sleep(0.25) # Currently configured : Check each quarter second.
+        else:
+            return
         return
+    # End of main()
     
     def queue_message(self, command):
         '''Takes a command in from 1553_simulator.py and turns it into an event and queues it'''
