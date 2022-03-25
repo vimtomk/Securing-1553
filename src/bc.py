@@ -37,6 +37,9 @@ class bc(object):
         self.dwords_stored      = ""        # Stores a string of data words as they come in, eventually being output to the terminal.
         self.write_permission   = False     # Keeps track of if the BC is the one who should be writing to the bus this cycle
 
+        self.public_key         = None      # Initialized to none type because it is initialized when a function is called
+        self.private_key        = None      # Initialized to none type because it is initialized when a function is called
+
         # For Timer functions, create a variable to check if the BC object still exists before looping execution
         self.exists = "Yes!"
 
@@ -104,13 +107,6 @@ class bc(object):
         msg_out = data_word.create_data_word(data)
         return msg_out
 
-    ## TODO: Find out how to transmit command word to check on RT and then instantiate comms
-    # Need to be given a specific RT to check. A Data word is
-    # not required for this transfer. A Subaddress of 0 (00000) or
-    # 31 (11111) imply the contents are decoded as a 5 bit command.
-
-    ## TODO: Finish this function
-    # Need to add a insert RT number into dead_list if there is no reply
     # For each rt on the bus, create a command word one at a time and wait for response (status check)
     def check_rts(self):
         
@@ -144,7 +140,9 @@ class bc(object):
                 else:
                     sleep(0.001)
                     continue
-            
+            # insert RT number into dead_list if there is no reply
+            else:
+                self.rt_list.remove(rt)
         return
 
     # Read message from bus (20 bits)
@@ -232,6 +230,10 @@ class bc(object):
         self.exists = "No."
         del(self)
 
+    # Set Write Permission
+    def set_write_perm(self, bool):
+        self.write_permission = bool
+        return
 
     # Event Handler
     def event_handler(self):
@@ -249,11 +251,22 @@ class bc(object):
                 elif (int(event[4]) == -1):
                     self.events.append(event)
             
+            # Wait until bus is not in use before continuing (checking each 5 ms)
+            while (self.databus.is_in_use == 1):
+                sleep(0.005)
+                pass
+
+            # Set databus as being in use
+            self.databus.set_in_use(1)
+            self.write_permission = True
+
+
             # BC -> RT
-            if (event[0][:2] == "BC" and event[1][:2] == "RT"):
+            if (event[0][:2] == "BC" and event[1][:2] == "RT" and self.write_permission == True):
                 print("BC to RT transfer!")
                 # Do the BC->RT transfer
                 self.BC_RT_Transfer(int(event[1][-2:]), event[6])
+                self.databus.set_in_use(0)
                 return
 
             # RT -> BC
@@ -278,7 +291,6 @@ class bc(object):
         else:
             return
 
-    ## TODO: Add read_message_timer and write_message_timer for logic
     # BC -> RT
     ## Bus Controller to Remote Terminal Transfer
     ## The Bus Controller sends one 16-bit receive command word
@@ -589,13 +601,20 @@ class bc(object):
     def receive_public_key(self):
 
         for rt in self.rt_list:
+            
             # BC creates a command word telling the RT to send its public key (4 data words)
-
             sendmekeymsg = self.create_command_word(rt, 1, 0, 10)
 
             #BC writes the Command Word to the Bus
             self.write_message(sendmekeymsg)
             sleep(1)
+
+
+            # BC reads a word off of the Bus, it should be the Status word from the RT saying it is transmitting its public key
+            rt_status_word      =     self.read_message()
+            self.validate_status_word(rt_status_word)
+            sleep(1) 
+
 
             # An array that will hold four sixteen bit data words
             data_word_list = []
@@ -607,7 +626,9 @@ class bc(object):
                 data_word_list.append(rt_public_key_data.data)
 
             #This creates a dictionary of RT public keys [rt# : rt_public_key]
-            self.RT_keys[rt] = int(str(data_word_list[0] + data_word_list[1] + data_word_list[2] + data_word_list[3]), 16)   
+            self.RT_keys[rt] = int(str(data_word_list[0] + data_word_list[1] + data_word_list[2] + data_word_list[3]), 16)
+
+              
 
 
             return

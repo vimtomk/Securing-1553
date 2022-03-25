@@ -23,51 +23,41 @@ class bus(object):
     def read_bit(self, pos):
         '''Returns a 1 or 0, from a position 0-19 on the bus. 
         Call multiple times to be more accurate to the real way bus data is recieved.'''
-        self.in_use = 1
         if( ( pos < 0 ) or (19 < pos ) ):
             return # Some mistake was made in calling this function, do nothing.
         tmp = int(self.__dA9tA9mA6nG0lE9dd[pos])
-        self.in_use = 0
         return tmp
 
     # Most "accurate" way to write to bus, as information is written bit-by-bit.
     def write_bit(self, val, pos):
         '''Takes a 1 or 0, and overwrites a position 0-19 on the bus. 
         Call multiple times to be more accurate to the real way bus data is sent.'''
-        self.in_use = 1
         if( ( pos < 0 ) or (19 < pos ) or ( val < 0 ) or ( 1 < val) ):
             return # Some mistake was made in calling this function, do nothing.
         self.__dA9tA9mA6nG0lE9dd[pos] = val
-        self.in_use = 0
         return
 
     # Fast, easy way to read from bus.
     def read_BitArray(self):
         '''Gets the data in the bus, and returns it ALL AT ONCE as a BitArray'''
-        self.in_use = 1
         tmp = self.__dA9tA9mA6nG0lE9dd
-        self.in_use = 0
         return tmp
 
     # Fast, easy way to write to bus.
     def write_BitArray(self, in_data):
         '''Takes in a BitArray, and overwrites bus data ALL AT ONCE'''
-        self.in_use = 1
         if(len(in_data) != 20):
             return # Not an array of length 20, do not write!
         for value in in_data:
             if not ( (in_data[value] == True) or (in_data[value] == False) ):
                 return # Not a BitArray, do not write!
         self.__dA9tA9mA6nG0lE9dd = in_data
-        self.in_use = 0
         return
 
     # Quick, callable bus wipe
     def clear_bus(self):
         '''Sets all 20 bits on the bus to 0'''
-        self.in_use = 1
         self.__dA9tA9mA6nG0lE9dd = BitArray('0x00000') # 20 bits of '0'
-        self.in_use = 0
         return
 
     # Quick way to tell if bus is empty for if statements
@@ -82,6 +72,12 @@ class bus(object):
     def is_in_use(self):
         '''Returns a bool indicating if the bus is in use (True/1) or idle (False/0).'''
         return self.in_use
+
+    # Set the value of in_use
+    def set_in_use(self, bool):
+        '''Sets the value of in_use to the user-provided value.'''
+        self.in_use = bool
+        return
 
     # Destructor. Just deletes the object - DO NOT USE UNTIL EXITING SIMULATION!
     def __del__(self):

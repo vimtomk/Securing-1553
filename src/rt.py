@@ -38,6 +38,9 @@ class rt(object):
         self.dwords_expected    = 0       # A counter that keeps track of how many data words the terminal is still expecting to receive
         self.dwords_stored      = ""      # Stores a string of data words as they come in, eventually being output to the terminal.
         self.write_permission   = 0       # Count indicating how many data words this RT has permission to write to the bus
+
+        self.public_key         = None      # Initialized to none type because it is initialized when a function is called
+        self.private_key        = None      # Initialized to none type because it is initialized when a function is called
         
         self.events             = deque() # A list of events (str arrays) that come from 1553_simulator
 
@@ -55,6 +58,7 @@ class rt(object):
     
     ## TODO: Generate key-pair when BC class finished
     def gen_key(self):
+
         return
 
     # Event Handler
@@ -266,7 +270,11 @@ class rt(object):
                 data_word_list.append(data_word.data)
                 sleep(1)
 
-            self.BC_public_key = int(str(data_word_list[0], data_word_list[1], data_word_list[2], data_word_list[3]), 16)    
+            self.BC_public_key = int(str(data_word_list[0], data_word_list[1], data_word_list[2], data_word_list[3]), 16)
+
+            # After all data words are received the RT should respond with a Status Word to acknowledge that the messages were received
+            self.issue_status_word(sendable_status_word)
+
             return
 
         elif (mode_code==BitArray(uint=10, length=5)):   # case 10: Transmit Remote Terminal Public Key | 4 Data Words Associated
@@ -276,6 +284,9 @@ class rt(object):
             
             sleep(1)
 
+            self.issue_status_word(sendable_data_word)
+
+            self.private_key = secrets.randbelow(9223372036854775808)
             self.public_key = secrets.randbelow(9223372036854775808)
             
             full_public_key = BitArray(uint= self.public_key, length=64)
@@ -286,6 +297,9 @@ class rt(object):
                 public_key_dw       =      self.create_data_word(data_word)
                 self.write_message(public_key_dw)
                 sleep(1)
+
+            
+            
             return
           
         elif (mode_code==BitArray(uint=16, length=5)):	# case 16: Transmit Vector Word | Data Word Associated
@@ -426,7 +440,7 @@ class rt(object):
                             
                 # The RT has received a broadcast message                
                 elif (tmp_msg.rt_addr.bin == BitArray(uint=31, length=5).bin):
-                    # Not implementing broadcast functionality at this time...
+                    #TODO: Watch for broadcasted status words w/ non-zero reserved bits.
                     return
 
                 # We have encountered some type of error in the message type bits

