@@ -14,16 +14,17 @@ class DHKE(object):
     def generate_partial_key(self):
         self.partial_key = self.public_key1 ** self.private_key
         self.partial_key = self.partial_key % self.public_key2 
-        return self.partial_key
+        
 
 
-    def generate_full_key(self, partial_key):
-        full_key = partial_key ** self.private_key     
-        full_key = full_key % self.public_key2   
-        self.full_key = full_key
+    def generate_full_key(self):
+        self.full_key = self.partial_key ** self.private_key     
+        self.full_key = self.full_key % self.public_key2   
+
         if self.full_key == 0:
             self.full_key += 5
-        return full_key
+        else:
+            self.full_key = self.full_key
 
 
     def encrypt_message(self,message):

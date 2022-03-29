@@ -25,7 +25,7 @@ class attacker(object):
         self.exists = "Yes!"
         if(atk_type == "DoS"):
             self.deny_service(frequency / 10)
-        elif(atk_type == "Eavesdropping"):
+        elif(atk_type == "Eavesdropping"): # Do not make more than one eavesdropper in a simulation!
             event = {"Event" : "Started listening in on the bus!"}
             self.addtime(event)
             with open(getcwd() + '/io/jsons/stolen.json', 'a') as event_dumped:
@@ -61,19 +61,24 @@ class attacker(object):
 
     def eavesdrop(self, frequency):
         '''Keeps its own log of all bus events, spying on messages not intended to be overheard'''
-        Timer(frequency, self.eavesdrop, [frequency]).start() # Call repeatedly on a timer
+        if(self.exists == "Yes!"): # Check if the object still exists
+            Timer(frequency, self.eavesdrop, [frequency]).start() # Call repeatedly on a timer
+        else:
+            return
         event = {}
         self.addtime(event)
         tmp_message = self.bus.read_BitArray()
-        event["Overheard Message"] = tmp_message
+        event["Overheard Message"] = tmp_message.bin
         with open(getcwd() + '/io/jsons/stolen.json', 'a') as event_dumped:
             dump(event, event_dumped)
+            event_dumped.write("\n")
         # Special additional action for data words - Capture and convert the actual data to chars
         if(tmp_message[0] == 1 and tmp_message[1] == 1 and tmp_message[2] == 0): # If a data word 110...
             event = {"Event" : "Data word intercepted!"}
             event["Data Characters"] = chr(int(tmp_message.bin[3:11],2)) + chr(int(tmp_message.bin[11:19],2))
             with open(getcwd() + '/io/jsons/stolen.json', 'a') as event_dumped:
                 dump(event, event_dumped)
+                event_dumped.write("\n")
         return
 
     def addtime(self, dictionary):
@@ -90,6 +95,7 @@ class attacker(object):
 
     def imitate(self, num_src, num_dst, frequency):
         '''Pretends to be a valid RT'''
+        ##TODO: When the bus is ready to go, and we have a decent simulation, try this attack in that simulation...
         data = ["IM", "RT", str(num_src)]
         if len(data[2] != 2):
             data[2] = "0" + data[2]

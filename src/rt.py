@@ -47,16 +47,24 @@ class rt(object):
         # For Timer functions, create a variable to check if the RT object still exists before looping execution
         self.exists = "Yes!"
 
-        # Start listening immediately
-        #self.main()
-
         print("RT {} Init Successful".format(self.num.int)) # Debug line
+
+        # Start listening immediately
+        self.main()
+
+
 
     # Returns the Remote Terminal ID number (0-31)
     def return_rt_num(self):
         return self.num
     
-    ## TODO: Generate key-pair when BC class finished
+    # Sets Write Permission
+    def set_write_perm(self, bool):
+        self.write_permission = bool
+        return
+
+    ## TODO: Generate key-pair function to call when a broadcast with non-zero
+    #        reserved bits is received
     def gen_key(self):
 
         return
@@ -361,8 +369,12 @@ class rt(object):
             # implement the if-else, and set up contextual decision making
             # i.e., understand what to do with the next message
 
-            # Grabs first message from bus if bus not empty
+            # Grabs first message from bus if bus not empty and not in use
             if not(self.databus.is_empty()):
+                # Wait for databus to not be in use.
+                while (self.databus.is_in_use()):
+                    sleep(0.005)
+                    pass
                 tmp_msg = self.read_message()
                 
                 # Use RT method that passes bus queue to RT and processes the first message on the queue
@@ -440,7 +452,8 @@ class rt(object):
                             
                 # The RT has received a broadcast message                
                 elif (tmp_msg.rt_addr.bin == BitArray(uint=31, length=5).bin):
-                    #TODO: Watch for broadcasted status words w/ non-zero reserved bits.
+                    #TODO: Watch for broadcasted status words w/ non-zero 
+                    #      reserved bits as a form of synchronizing keys 
                     return
 
                 # We have encountered some type of error in the message type bits

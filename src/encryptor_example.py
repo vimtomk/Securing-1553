@@ -34,10 +34,40 @@ def main(self):
 
            # Create an instance of DHKE for the BC and RT
            bus_controller_ep = DHKE(bus_controller.public_key, remote_terminal.public_key, bus_controller.private_key)
-
            remote_terminal_ep = DHKE(remote_terminal.public_key, bus_controller.public_key, remote_terminal.private_key)
-
            
+
+           #Create partial key and full key for each device respectfully
+           bus_controller_ep.generate_partial_key()
+           bus_controller_ep.generate_full_key()
+
+           remote_terminal_ep.generate_partial_key()
+           remote_terminal_ep.generate_full_key()
+
+           # Example Message that will be encrypted on the BC side and decrypted on the RT side 
+           # Print message before encryption process for proof of concept
+           message = "Hello"
+           print(message)
+
+           # Create the encrypted message on BC side by using the encrypt message function from DHKE class
+           encrypted_message = bus_controller_ep.encrypt_message(message)
+           
+           # This function will get the size of the message in bytes
+           size = sys.getsizeof(encrypted_message)
+
+           # Find the amount of bits we need to encode all the bytes
+           # Even number of bytes
+           if (size % 2 == 0):
+               data_word_bits_needed = (size / 2) * 16 
+           # Odd number of bytes
+           else:
+               data_word_bits_needed = ((size / 2) + 1) * 16
+
+           # List to store data word list
+           ## TODO: Finish
+           for i in range(0, data_word_bits_needed):
+               pass
+
 
 
         except KeyboardInterrupt:
