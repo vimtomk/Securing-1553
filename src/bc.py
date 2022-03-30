@@ -45,7 +45,21 @@ class bc(object):
 
         # Begin normal BC behavior
         self.main()
+        
         return
+
+
+    def main(self):
+        # Loop the execution of BC frequently, and let it orchestrate bus communications
+        if(self.exists == "Yes!"): 
+            # If the BC has been removed, stop execution
+            #threading.Timer(1, self.main()).start() #<-- Line will cause a recursion error if the BC is established outside 1553_simulator.py. Unclear why as of now...
+
+            # Handle events in the event list if the databus free to be use
+            if (not(self.databus.is_in_use())):
+                self.event_handler()
+        return
+
 
     # Returns the terminal number of the BC
     def return_terminal_num(self):
@@ -212,18 +226,12 @@ class bc(object):
     def write_message(self, msg):
         self.databus.write_BitArray(msg)
 
-
-    def main(self):
-        # Loop the execution of BC frequently, and let it orchestrate bus communications
-        if(self.exists == "Yes!"): 
-            # If the BC has been removed, stop execution
-            threading.Timer(1, self.main()).start() #<-- Line will cause a recursion error if the BC is established outside 1553_simulator.py. Unclear why as of now...
-
-            # Handle events in the event list if the databus free to be use
-            if (not(self.databus.is_in_use())):
-                self.event_handler()
+    # Function to wait on write permissions to continue execution.
+    def wait_for_perm(self):
+        while(not(self.write_permission)):
+            sleep(0.005)
+            pass
         return
-
 
     # BC Destructor
     def __del__(self):
@@ -287,9 +295,12 @@ class bc(object):
             else: 
                 print("Event undefined transfer! ", event[0], "->", event[1])
                 return
-            
+        
+        # No more events, therefore exit
         else:
-            return
+            exit()
+
+    ## TODO: Finish adding logic for waiting on write perms to the bus
 
     # BC -> RT
     ## Bus Controller to Remote Terminal Transfer
@@ -297,7 +308,7 @@ class bc(object):
     ## immediately followed by 1 to 32 16-bit data words. 
     ## The selected Remote Terminal then sends a single 16-bit Status word.
     def BC_RT_Transfer(self, rt_num_rx, data):
-        
+
         # Creates an array of two characters that will later be turning into 16 bit data words
         array = self.string_to_tokens(data)
 
@@ -315,7 +326,8 @@ class bc(object):
         # Create and issue the command word for the receiving RT
         tmp_msg_rx     =    self.create_command_word(rt_num_rx, self.rx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_rx)
-        sleep(1)
+        self.set_write_perm(False)
+        self.wait_for_perm()
         
         # Create and issue 1 to 32 16-bit data words
         for bs in bit_string_list:
@@ -337,6 +349,8 @@ class bc(object):
             self.error = 1
             return
         
+        # Unset the BC write permission when done
+        self.set_write_perm(False)
         print("The transfer from BC to RT " + rt_num_rx + " has terminated.")
         return
 

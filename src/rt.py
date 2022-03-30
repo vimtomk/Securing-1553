@@ -50,7 +50,7 @@ class rt(object):
         print("RT {} Init Successful".format(self.num.int)) # Debug line
 
         # Start listening immediately
-        self.main()
+        #self.main()
 
 
 
