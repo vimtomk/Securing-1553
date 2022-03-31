@@ -14,7 +14,7 @@ from bus import bus
 
 class attacker(object):
 
-    def __init__(self, atk_type, frequency, terminal_src = 32, terminal_dst = 32):
+    def __init__(self, atk_type, frequency, terminal_src = 32, terminal_dst = 32 , demo_mode = 0):
         '''Initializes an attack of the type "atk_type" from args.
         Different attack types implement different behavior from this class.'''
         if(type(atk_type) is not str):
@@ -22,6 +22,7 @@ class attacker(object):
             self.__del__()
         self.atk = atk_type
         self.bus = bus()
+        self.src = None
         self.exists = "Yes!"
         if(atk_type == "DoS"):
             self.deny_service(frequency / 10)
@@ -42,7 +43,7 @@ class attacker(object):
                 if(terminal_dst < 0 or terminal_dst > 30 or (type(terminal_dst) is not int)):
                     print("That was not a valid terminal number. Please pass an integer from 0-30.")
                     self.__del__()
-                self.imitate(terminal_src, terminal_dst, frequency)
+                self.imitate(terminal_src, terminal_dst, frequency, demo_mode)
             pass #TODO: Define behavior for imitation
         else:
             print("Sorry, that attack type is not recognized or implemented. Exiting...")
@@ -93,9 +94,11 @@ class attacker(object):
         dictionary['time_microsecond'] = temp_dt.strftime('%f')
         return
 
-    def imitate(self, num_src, num_dst, frequency):
+    def imitate(self, num_src, num_dst, frequency, demo_flag):
         '''Pretends to be a valid RT'''
-        ##TODO: When the bus is ready to go, and we have a decent simulation, try this attack in that simulation...
+        self.src = num_src
+        if(demo_flag == 1):
+            print("Attacker is now going to imitate RT" + str(num_src) + " and send data to RT" + str(num_dst))
         data = ["IM", "RT", str(num_src)]
         if len(data[2] != 2):
             data[2] = "0" + data[2]
@@ -107,6 +110,7 @@ class attacker(object):
             hush_command.append('0')
         self.bus.write_BitArray(BitArray(hush_command))
         # Now, wait for BC instruction to transmit.
+        #TODO: Add case for Demo that doesn't require a BC...
         go_ahead = 0
         while go_ahead == 0:
             sleep(frequency)
@@ -120,6 +124,7 @@ class attacker(object):
             if((msg[9:14] == '00000') or (msg[9:14] == '11111')): # Command word w/ mode code, ignore.
                 continue
             else: # This RT is being given time to speak on the bus. Initiate transfer, and send data. Pad with "!!"
+                #TODO: Disentangle the following code from within this while() loop
                 allowed_sends = int(msg[14:19].bin, 2)
                 while(allowed_sends > len(data)):
                     data.append("!!")
@@ -129,6 +134,8 @@ class attacker(object):
                         data_word.append("1")
                     else:
                         data_word.append("0")
+                    if(demo_flag == 1):
+                        print("Attacker is sending \"" + char_pair + "\" to RT" + str(num_dst))
                     self.bus.write_BitArray(BitArray(data_word))
                     sleep(frequency) # Give time for message to be read
         return
@@ -143,6 +150,14 @@ class attacker(object):
             with open(getcwd() + '/io/jsons/stolen.json', 'a') as event_dumped :
                 dump(event, event_dumped)
         self.exists = "No."
+        # Re-activate the imitated RT after ceasing imitation the attack
+        if(self.atk == "Imitation"):
+            tmp = '0b101' + BitArray(uint=self.src, length=5).bin + '1' + '00000' + '00010'
+            if(tmp.count(1) % 2 == 0):
+                tmp.append("1")
+            else:
+                tmp.append("0")
+            self.bus.write_BitArray(BitArray(tmp))
         del(self)
 
 # Examples of use:

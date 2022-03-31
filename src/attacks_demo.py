@@ -40,6 +40,7 @@ sleep(2)
 
 print("Now starting the DoS attack demonstration...")
 sleep(2)
+
 # Start bus
 print("Initializing data bus...")
 databus = bus()
@@ -85,7 +86,7 @@ sleep(2)
 print("Now starting the actual attack portion...")
 sleep(1)
 print("With DoS: RT01 is sending a message to RT02")
-##TODO: Implement the DoS Attack demo
+
 # Start the attacking terminal
 print("Starting the attacking terminal...")
 spammer = attacker("DoS", 3)
@@ -145,6 +146,7 @@ sleep(2)
 
 print("Now starting the eavesdropping attack demonstration...")
 sleep(2)
+
 # Start bus
 print("Initializing data bus...")
 databus = bus()
@@ -209,6 +211,31 @@ print("\nCheck the log file in \\io\\jsons called \"stolen.json\" \n")
 
 
 #-PART 3 : Imitation Attack------------
-##TODO: Once the bus is ready to go and the Imitation attacker has been tested, populate this part with comments and code...
+# In this part, we will prove the 1553 is vulnerable to imitation attacks
+# We will have the attacker attach to the bus, and send a command word to the imitated RT to listen for a lot of data words
+# Due to 1553's specifics, this causes the target RT to never try and send messages until it gets a "Transmit Last Status" word from the BC
+# But since the BC didn't tell the RT to listen, the BC doesn't think to check the status of the RT. So the RT is effectively disabled
+# until the attacker releases control by sending a "Transmit Last Status" word and re-activating the RT it was imitating
 
-#print("Now starting the imitation attack demonstration...")
+print("Now starting the imitation attack demonstration...")
+sleep(2)
+
+# Start bus
+print("Initializing data bus...")
+databus = bus()
+sleep(.5)
+print("Initializing RTs...")
+rt1_dos = rt(1)
+rt2_dos = rt(2)
+
+## DEMO GOES HERE
+
+# Start cleaning up
+# Shut down RTs
+print("Shutting down RTs...")
+rt1_dos.__del__()
+rt2_dos.__del__()
+sleep(.3)
+# Delete bus for next demo
+print("Shutting down data bus...")
+databus.__del__()

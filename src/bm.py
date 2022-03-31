@@ -48,7 +48,7 @@ class bm(object):
             threading.Timer(self.frequency, self.record_bus_contents).start()
         else:
             return
-        tmp_message = bus.read_BitArray()
+        tmp_message = self.bus.read_BitArray()
         # Is there anything new on the bus?
         if(tmp_message == self.last_message):
             # Probably nothing new to log, ignore what is on the bus
@@ -57,7 +57,7 @@ class bm(object):
             return
         # Else, there is something new to log. So do that.
         bus_event = {}
-        bus_event["Raw Message"] = self.tmp_message
+        bus_event["Raw Message"] = tmp_message
         self.addtime(bus_event)
         if(tmp_message[0] == 1 and tmp_message[1] == 1 and tmp_message[2] == 0): # If a data word 110...
             bus_event["Message Type"] = "Data"
@@ -84,7 +84,8 @@ class bm(object):
         else:
             bus_event["Parity"] = "Passed"
         # Any other things that need to be logged to the json should probably be recorded here.
-        self.log_to_json(bus_event)
+        ##TODO: Fix attempted logging of "BitArray" type events. BitArray must be converted to something else
+        #self.log_to_json(bus_event)
         # Keep a temporary copy of the last message for future comparisons.
         self.last_message = tmp_message
         return

@@ -37,12 +37,17 @@ class rt(object):
         self.last_command_word  = BitArray(uint=0, length=20)   # Use to store last received command word
         self.dwords_expected    = 0       # A counter that keeps track of how many data words the terminal is still expecting to receive
         self.dwords_stored      = ""      # Stores a string of data words as they come in, eventually being output to the terminal.
+
+        # Flags for handling execution of message transfers
+        self.read_permission    = True    # Flag which keeps track of if the RT is O.K. to read the data on the bus
         self.write_permission   = 0       # Count indicating how many data words this RT has permission to write to the bus
 
         self.public_key         = None      # Initialized to none type because it is initialized when a function is called
         self.private_key        = None      # Initialized to none type because it is initialized when a function is called
         
         self.events             = deque() # A list of events (str arrays) that come from 1553_simulator
+
+        self.frequency          = 1       # Default tie to sleep between events
 
         # For Timer functions, create a variable to check if the RT object still exists before looping execution
         self.exists = "Yes!"
@@ -57,11 +62,6 @@ class rt(object):
     # Returns the Remote Terminal ID number (0-31)
     def return_rt_num(self):
         return self.num
-    
-    # Sets Write Permission
-    def set_write_perm(self, bool):
-        self.write_permission = bool
-        return
 
     ## TODO: Generate key-pair function to call when a broadcast with non-zero
     #        reserved bits is received
@@ -167,6 +167,20 @@ class rt(object):
         #self.databus.write_BitArray(self.event_to_word(self.events.pop()))
         return
 
+    # Fucntion to wait on write permissions to continue execution.
+    def wait_for_write_perm(self):
+        while(not(self.write_permission)):
+            sleep(0.01)
+            pass
+        return
+
+    # Fucntion to wait on read permissions to continue execution.
+    def wait_for_read_perm(self):
+        while(not(self.read_permission)):
+            sleep(0.01)
+            pass
+        return
+
     # RT -> BC
     ## Remote Terminal to Bus Controller Transfer
     ## The Bus Controller sends one transmit command word to a Remote Terminal
@@ -179,13 +193,13 @@ class rt(object):
         msg_count = len(array)
 
         # Listen for command word
-        sleep(0.5)
+        sleep(self.frequency)
         bc_command_word = self.read_message()
 
         # Transmit status word
         rt_status_word = self.create_status_word()
         self.issue_status_word(rt_status_word)
-        sleep(1)
+        sleep(self.frequency)
 
         # Now send the data words
         bit_string_list = []
@@ -194,7 +208,7 @@ class rt(object):
             bit_string_list.append(bs)
 
         for bs in bit_string_list:
-            sleep(1)
+            sleep(self.frequency)
             data_msg = self.create_data_word(bs)
             self.issue_data_word(data_msg)
 
@@ -276,7 +290,7 @@ class rt(object):
 
                 data_word = self.read_message()
                 data_word_list.append(data_word.data)
-                sleep(1)
+                sleep(self.frequency)
 
             self.BC_public_key = int(str(data_word_list[0], data_word_list[1], data_word_list[2], data_word_list[3]), 16)
 
@@ -290,7 +304,7 @@ class rt(object):
             sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
                 0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
             
-            sleep(1)
+            sleep(self.frequency)
 
             self.issue_status_word(sendable_data_word)
 
@@ -304,7 +318,7 @@ class rt(object):
                     
                 public_key_dw       =      self.create_data_word(data_word)
                 self.write_message(public_key_dw)
-                sleep(1)
+                sleep(self.frequency)
 
             
             
@@ -373,7 +387,7 @@ class rt(object):
             if not(self.databus.is_empty()):
                 # Wait for databus to not be in use.
                 while (self.databus.is_in_use()):
-                    sleep(0.005)
+                    sleep(0.01)
                     pass
                 tmp_msg = self.read_message()
                 
@@ -439,7 +453,7 @@ class rt(object):
                                 char1 = chr(int(msg[0:8], 2))
                                 char2 = chr(int(msg[8:], 2))
                                 data_word_list.append(char1 + char2)
-                                sleep(1)
+                                sleep(self.frequency)
                                 
                             for ch in data_word_list:
                                 message += ch

@@ -1,10 +1,13 @@
 #!/usr/bin/python3
-
 import bus
 import bc, rt, bm, os, sys, threading, time, message
 from encryptor import DHKE
+import pdb
+import sys
 
 
+
+sys.setrecursionlimit(100000000)
 
 
 # Loop here and try-catch
@@ -15,7 +18,7 @@ def main():
     
     # Initialize BC
     # Getting stuck here, start here and fix this
-    bus_controller  = bc.bc(3, [1,2,4]) # BC at terminal 0 and 1 RT at terminal 1
+    bus_controller  = bc.bc(3, rt_nums) # BC at terminal 0 and 1 RT at terminal 1
     print("Hi")
 
     # Initialize RT

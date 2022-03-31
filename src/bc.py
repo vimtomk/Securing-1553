@@ -22,6 +22,7 @@ class bc(object):
         self.error          = 0         # Flag to indicate if there is a communications error
         self.init_bus       = 0         # Flag to indicate if bus has been initialised
         self.dead_list      = list()    # List the discarded RTs marked by an alive check
+        self.frequency      = 1         # Set the frequency at which to send the messages on the bus
 
         # Instantiate commonly-used constants
         self.tx             = BitArray(uint=1, length=1)  # Tx is a logic 1
@@ -35,6 +36,9 @@ class bc(object):
         self.events             = deque()   # A list of events from 1553_simulator. Add critical messages (like responses to other devices) to the front of the queue
         self.dwords_expected    = 0         # A counter that keeps track of how many data words the terminal is still expecting to receive
         self.dwords_stored      = ""        # Stores a string of data words as they come in, eventually being output to the terminal.
+
+        # Flags for handling execution of message transfers
+        self.read_permission    = True      # Keeps track of if the BC is O.K. to read from the bus
         self.write_permission   = False     # Keeps track of if the BC is the one who should be writing to the bus this cycle
 
         self.public_key         = None      # Initialized to none type because it is initialized when a function is called
@@ -43,21 +47,33 @@ class bc(object):
         # For Timer functions, create a variable to check if the BC object still exists before looping execution
         self.exists = "Yes!"
 
+        
+
         # Begin normal BC behavior
         self.main()
         
+
+
         return
 
 
     def main(self):
+
+    
         # Loop the execution of BC frequently, and let it orchestrate bus communications
         if(self.exists == "Yes!"): 
+            
             # If the BC has been removed, stop execution
             #threading.Timer(1, self.main()).start() #<-- Line will cause a recursion error if the BC is established outside 1553_simulator.py. Unclear why as of now...
+
+        
+        
 
             # Handle events in the event list if the databus free to be use
             if (not(self.databus.is_in_use())):
                 self.event_handler()
+
+        
         return
 
 
@@ -128,7 +144,7 @@ class bc(object):
             # The two at the end ensures we are using mode code 2 which means the BC wants the RT to send a status word
             self.create_command_word(rt, self.tx, self.zero, 2)
             # Now wait a second and listen for message on bus
-            sleep(1)
+            sleep(self.frequency)
             # Wait no longer than 10 seconds
             max_wait   = int(1)
             start_time = time.time()
@@ -227,9 +243,16 @@ class bc(object):
         self.databus.write_BitArray(msg)
 
     # Function to wait on write permissions to continue execution.
-    def wait_for_perm(self):
+    def wait_for_write_perm(self):
         while(not(self.write_permission)):
-            sleep(0.005)
+            sleep(0.01)
+            pass
+        return
+
+    # Function to wait on read permissions to continue execution.
+    def wait_for_read_perm(self):
+        while(not(self.read_permission)):
+            sleep(0.01)
             pass
         return
 
@@ -237,11 +260,6 @@ class bc(object):
     def __del__(self):
         self.exists = "No."
         del(self)
-
-    # Set Write Permission
-    def set_write_perm(self, bool):
-        self.write_permission = bool
-        return
 
     # Event Handler
     def event_handler(self):
@@ -326,15 +344,15 @@ class bc(object):
         # Create and issue the command word for the receiving RT
         tmp_msg_rx     =    self.create_command_word(rt_num_rx, self.rx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_rx)
-        self.set_write_perm(False)
+        self.write_permisison = False
         # Set the designated rt's write permission to True and wait to be given back write perms
-        self.rt_list[self.rt_list.index(rt_num_rx)].set_write_perm(True)
-        self.wait_for_perm()
+        (self.rt_list[self.rt_list.index(rt_num_rx)]).write_permission = True
+        self.wait_for_write_perm()
         
         # Create and issue 1 to 32 16-bit data words
         for bs in bit_string_list:
             ## TODO: Get a better timer system b/w BC and RT
-            sleep(1)
+            sleep(self.frequency)
             data_msg     =    self.create_data_word(bs)
             self.issue_data_word(data_msg)
             
@@ -351,7 +369,7 @@ class bc(object):
             return
         
         # Unset the BC write permission when done
-        #self.set_write_perm(False)
+        #self.write_permission =False
         print("The transfer from BC to RT " + rt_num_rx + " has terminated.")
         return
 
@@ -371,12 +389,13 @@ class bc(object):
         # Create and issue the command word for the transmitting RT
         tmp_msg_tx     =    self.create_command_word(rt_num_tx, self.tx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_tx)
-        self.set_write_perm(False)
-        self.rt_list[self.rt_list.index(rt_num_tx)].set_write_perm(True)
+        self.write_permission = False
+        (self.rt_list[self.rt_list.index(rt_num_tx)]).write_permission = True
         
         # Waits for a status word to be received from the transmitting RT and validate it
+        
         rt_status_word =    self.read_message()
-        sleep(1)
+        sleep(self.frequency)
         
         if (self.validate_status_word(rt_status_word) == 0):
             print("RT " + rt_num_tx + " is sending messages to BC")
@@ -394,13 +413,13 @@ class bc(object):
                 char1 = chr(int(msg[0:8], 2))
                 char2 = chr(int(msg[8:], 2))
                 data_word_list.append(char1 + char2)
-                sleep(1)
+                sleep(self.frequency)
 
         for i in data_word_list:
                 message += i
 
         print("The message received from " + rt_num_tx + " is " + message)
-        self.wait_for_perm()
+        self.wait_for_write_perm()
         return ("The transfer from RT " + rt_num_tx + " to BC has terminated")
 
     ## TODO: Fix once RT-RT timing is finished
@@ -422,16 +441,16 @@ class bc(object):
         # Create and issue the command word for the receiving RT
         tmp_msg_rx    =  self.create_command_word(rt_num_rx, self.rx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_rx)
-        sleep(1)
+        sleep(self.frequency)
         
         # Create and issue the command word for the transmitting RT
         tmp_msg_tx    =  self.create_command_word(rt_num_tx, self.tx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_tx)
-        sleep(1)
+        sleep(self.frequency)
         
         # Wait for transmitting RT to send a status word back and validate the status word
         rt_status_tx  = self.read_message()
-        sleep(1)
+        sleep(self.frequency)
         
         if (self.validate_status_word(rt_status_tx) == 0):
             print("RT " + rt_num_tx + " is sending messages to RT " + rt_num_rx + ".")
@@ -444,7 +463,7 @@ class bc(object):
          
         # Create and issue the status word from the receiving RT
         rt_status_rx  = self.read_message()
-        sleep(1)
+        sleep(self.frequency)
         
         if (self.validate_status_word(rt_status_rx) == 0):
             print("RT " + rt_num_rx + " is finished receiving messages from RT " + rt_num_tx + ".")
@@ -597,18 +616,18 @@ class bc(object):
             
             #BC writes the Command Word to the Bus
             self.write_message(sendkeysmsg)
-            sleep(1)
+            sleep(self.frequency)
             
             # BC creates BitArray with its public key, creates a data word with the public key BitArray, then writes the data word to the Bus
             for data_word in data_word_list:
                 public_key_dw       =      self.create_data_word(data_word)
                 self.write_message(public_key_dw)
-                sleep(1)
+                sleep(self.frequency)
 
             # BC reads a word off of the Bus, it should be the Status word from the RT saying it received the public key
             rt_status_word      =     self.read_message()
             self.validate_status_word(rt_status_word)
-            sleep(1)
+            sleep(self.frequency)
 
             return
     
@@ -623,13 +642,13 @@ class bc(object):
 
             #BC writes the Command Word to the Bus
             self.write_message(sendmekeymsg)
-            sleep(1)
+            sleep(self.frequency)
 
 
             # BC reads a word off of the Bus, it should be the Status word from the RT saying it is transmitting its public key
             rt_status_word      =     self.read_message()
             self.validate_status_word(rt_status_word)
-            sleep(1) 
+            sleep(self.frequency) 
 
 
             # An array that will hold four sixteen bit data words

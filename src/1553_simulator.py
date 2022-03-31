@@ -95,3 +95,5 @@ def main():
         # Delete bus - Comment out if other objects not created in this file are still relying on the bus to work.
         databus.__del__()
         exit()
+
+main
