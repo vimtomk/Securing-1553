@@ -327,18 +327,19 @@ class bc(object):
         tmp_msg_rx     =    self.create_command_word(rt_num_rx, self.rx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_rx)
         self.set_write_perm(False)
+        # Set the designated rt's write permission to True and wait to be given back write perms
+        self.rt_list[self.rt_list.index(rt_num_rx)].set_write_perm(True)
         self.wait_for_perm()
         
         # Create and issue 1 to 32 16-bit data words
         for bs in bit_string_list:
+            ## TODO: Get a better timer system b/w BC and RT
             sleep(1)
             data_msg     =    self.create_data_word(bs)
             self.issue_data_word(data_msg)
             
-            
         
         # Create and issue the status word from the receiving RT
-        sleep(2)
         rt_status_word      =    self.read_message()
         
         if (self.validate_status_word(rt_status_word) == 0):
@@ -350,7 +351,7 @@ class bc(object):
             return
         
         # Unset the BC write permission when done
-        self.set_write_perm(False)
+        #self.set_write_perm(False)
         print("The transfer from BC to RT " + rt_num_rx + " has terminated.")
         return
 
@@ -370,7 +371,8 @@ class bc(object):
         # Create and issue the command word for the transmitting RT
         tmp_msg_tx     =    self.create_command_word(rt_num_tx, self.tx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_tx)
-        sleep(1)
+        self.set_write_perm(False)
+        self.rt_list[self.rt_list.index(rt_num_tx)].set_write_perm(True)
         
         # Waits for a status word to be received from the transmitting RT and validate it
         rt_status_word =    self.read_message()
@@ -398,10 +400,10 @@ class bc(object):
                 message += i
 
         print("The message received from " + rt_num_tx + " is " + message)
-        
+        self.wait_for_perm()
         return ("The transfer from RT " + rt_num_tx + " to BC has terminated")
 
-
+    ## TODO: Fix once RT-RT timing is finished
     # RT -> RT
     ## Remote Terminal to Remote Terminal Transfer
     ## The Bus Controller sends out one receive command word 
