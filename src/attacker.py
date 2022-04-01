@@ -96,22 +96,26 @@ class attacker(object):
 
     def imitate(self, num_src, num_dst, frequency, demo_flag):
         '''Pretends to be a valid RT'''
+        sleep(frequency)
         self.src = num_src
         if(demo_flag == 1):
             print("Attacker is now going to imitate RT" + str(num_src) + " and send data to RT" + str(num_dst))
         data = ["IM", "RT", str(num_src)]
-        if len(data[2] != 2):
-            data[2] = "0" + data[2]
+        if (len(str(data[2])) != 2):
+            data[2] = "0" + str(data[2])
         # Shut up the RT that is being imitated. Send command word to listen for the maximum possible time, rendering the RT inert for a while.
         hush_command =  '0b101' + BitArray(uint=num_src, length=5).bin + '0' + '10101' + '11111'
-        if(hush_command.count(1) % 2 == 0):
-            hush_command.append('1')
+        if(hush_command.count('1') % 2 == 0):
+            hush_command = hush_command + '1'
         else:
-            hush_command.append('0')
+            hush_command = hush_command + '0'
+        sleep(frequency) # Wait for receptive RT to be silenced
         self.bus.write_BitArray(BitArray(hush_command))
         # Now, wait for BC instruction to transmit.
-        #TODO: Add case for Demo that doesn't require a BC...
         go_ahead = 0
+        if(demo_flag == 1):
+            go_ahead = 1 # Demo will not wait for a BC to permit speaking
+            allowed_sends = 3        
         while go_ahead == 0:
             sleep(frequency)
             msg = self.bus.read_BitArray()
@@ -124,20 +128,27 @@ class attacker(object):
             if((msg[9:14] == '00000') or (msg[9:14] == '11111')): # Command word w/ mode code, ignore.
                 continue
             else: # This RT is being given time to speak on the bus. Initiate transfer, and send data. Pad with "!!"
-                #TODO: Disentangle the following code from within this while() loop
+                go_ahead = 1
                 allowed_sends = int(msg[14:19].bin, 2)
-                while(allowed_sends > len(data)):
-                    data.append("!!")
-                for char_pair in data:
-                    data_word = '0b110' + BitArray(unit=ord(char_pair[0]), length=8).bin + BitArray(unit=ord(char_pair[1]), length=8).bin
-                    if(data_word.count(1) % 2 == 0):
-                        data_word.append("1")
-                    else:
-                        data_word.append("0")
-                    if(demo_flag == 1):
-                        print("Attacker is sending \"" + char_pair + "\" to RT" + str(num_dst))
-                    self.bus.write_BitArray(BitArray(data_word))
-                    sleep(frequency) # Give time for message to be read
+                break
+        while(allowed_sends > len(data)):
+            data.append("!!")
+        for char_pair in data:
+            char1 = bin(ord(char_pair[0]))[2:]
+            while len(char1) < 8:
+                char1 = "0" + char1
+            char2 = bin(ord(char_pair[1]))[2:]
+            while len(char2) < 8:
+                char2 = "0" + char2
+            data_word = "0b110" + char1 + char2
+            if(data_word.count('1') % 2 == 0):
+                data_word = data_word + "1"
+            else:
+                data_word = data_word + "0"
+            if(demo_flag == 1):
+                print("Attacker is sending \"" + char_pair + "\" to RT" + str(num_dst))
+            self.bus.write_BitArray(BitArray(data_word))
+            sleep(frequency) # Give time for message to be read
         return
 
     # Destructor
@@ -153,10 +164,10 @@ class attacker(object):
         # Re-activate the imitated RT after ceasing imitation the attack
         if(self.atk == "Imitation"):
             tmp = '0b101' + BitArray(uint=self.src, length=5).bin + '1' + '00000' + '00010'
-            if(tmp.count(1) % 2 == 0):
-                tmp.append("1")
+            if(tmp.count('1') % 2 == 0):
+                tmp = tmp + "1"
             else:
-                tmp.append("0")
+                tmp = tmp + "0"
             self.bus.write_BitArray(BitArray(tmp))
         del(self)
 

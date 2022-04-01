@@ -30,7 +30,7 @@ def string_to_tokens(in_string):
 
 print("Starting the attack demonstration.")
 sleep(.3)
-print("Order of attacks will be DoS, then eavesdropping, then imitation.")
+'''print("Order of attacks will be DoS, then eavesdropping, then imitation.")
 sleep(2)
 
 #-PART 1 : DoS Attack------------------
@@ -88,7 +88,7 @@ sleep(1)
 print("With DoS: RT01 is sending a message to RT02")
 
 # Start the attacking terminal
-print("Starting the attacking terminal...")
+print("Initializing the attacking terminal...")
 spammer = attacker("DoS", 3)
 sleep(2)
 complete_msg = ""
@@ -152,11 +152,11 @@ print("Initializing data bus...")
 databus = bus()
 sleep(.5)
 print("Initializing RTs...")
-rt1_dos = rt(1)
-rt2_dos = rt(2)
+rt1_evs = rt(1)
+rt2_evs = rt(2)
 msg_tokens = string_to_tokens("Hello, RT02!")
 sleep(.5)
-print("Initializing Eavesdropper...")
+print("Initializing the attacking terminal...")
 snooper = attacker("Eavesdropping", 3)
 sleep(.5)
 
@@ -175,9 +175,9 @@ for token in msg_tokens:
         dword = dword + "1"
     else:
         dword = dword + "0"
-    rt1_dos.databus.write_BitArray(BitArray(dword))
+    rt1_evs.databus.write_BitArray(BitArray(dword))
     sleep(1.5)
-    read_word = rt2_dos.databus.read_BitArray()
+    read_word = rt2_evs.databus.read_BitArray()
     print("RT02 got a message!")
     sleep(.1)
     if(read_word.bin[:3] == "110"):
@@ -199,8 +199,8 @@ snooper.__del__()
 sleep(3)
 # Shut down RTs
 print("Shutting down RTs...")
-rt1_dos.__del__()
-rt2_dos.__del__()
+rt1_evs.__del__()
+rt2_evs.__del__()
 sleep(.3)
 # Delete bus for next demo
 print("Shutting down data bus...")
@@ -216,25 +216,86 @@ print("\nCheck the log file in \\io\\jsons called \"stolen.json\" \n")
 # Due to 1553's specifics, this causes the target RT to never try and send messages until it gets a "Transmit Last Status" word from the BC
 # But since the BC didn't tell the RT to listen, the BC doesn't think to check the status of the RT. So the RT is effectively disabled
 # until the attacker releases control by sending a "Transmit Last Status" word and re-activating the RT it was imitating
-
+'''
 print("Now starting the imitation attack demonstration...")
 sleep(2)
-
+##TODO: Figure out how to 
 # Start bus
 print("Initializing data bus...")
 databus = bus()
 sleep(.5)
 print("Initializing RTs...")
-rt1_dos = rt(1)
-rt2_dos = rt(2)
-
-## DEMO GOES HERE
+rt1_imt = rt(1)
+rt2_imt = rt(2)
+sleep(.5)
+char_pair = "Hi"
+print("The real RT01 is sending \"" + char_pair + "\" to RT02")
+char1 = bin(ord(char_pair[0]))[2:]
+while len(char1) < 8:
+    char1 = "0" + char1
+char2 = bin(ord(char_pair[1]))[2:]
+while len(char2) < 8:
+    char2 = "0" + char2
+dword = "0b110" + char1 + char2
+if(dword.count("1") % 2 == 0):
+    dword = dword + "1"
+else:
+    dword = dword + "0"
+rt1_imt.databus.write_BitArray(BitArray(dword))
+sleep(1.5)
+read_word = rt2_imt.databus.read_BitArray()
+print("RT02 got a message!")
+complete_msg = ""
+sleep(.1)
+if(read_word.bin[:3] == "110"):
+    print("Data word recieved. Data was: \"" + chr(int(read_word.bin[3:11],2)) + chr(int(read_word.bin[11:19],2)) + "\"")
+    complete_msg = complete_msg + (chr(int(read_word.bin[3:11],2)) + chr(int(read_word.bin[11:19],2)))
+else:
+    print("Message could not be recognized as a data word...")
+if(read_word.count("1") % 2 == 0):
+        print("Message parity check failed!")
+else:
+    print("Message parity check passed.")
+sleep(1.5)
+print("Now starting the imitation attack. Initializing the attacker...")
+imposter = attacker("Imitation", 1.5, terminal_src = 1, terminal_dst = 2, demo_mode = 1)
+com_word = rt1_imt.databus.read_BitArray()
+if((com_word.bin[:3] == "110") and (com_word.bin[3:8] == "00010")):
+    print("RT01 got a command word!")
+    if((com_word[8] == False) and not ((com_word[9:14] == '00000') or (com_word[9:14] == '11111'))):
+        print("RT01's command was to listen in for " + str(int(com_word[14:19].bin, 2)) \
+            + " data words!\nThis effectively silences the terminal until it is asked to send status...")
+    else:
+        print("RT01's command was not to listen...")
+else:
+    print("RT01 failed to get the silencing command...")
+i = 0
+while(i < 3):
+    read_word = rt2_imt.databus.read_BitArray()
+    print("RT02 got a message!")
+    sleep(.1)
+    if(read_word.bin[:3] == "110"):
+        print("Data word recieved. Data was: \"" + chr(int(read_word.bin[3:11],2)) + chr(int(read_word.bin[11:19],2)) + "\"")
+        complete_msg = complete_msg + (chr(int(read_word.bin[3:11],2)) + chr(int(read_word.bin[11:19],2)))
+    else:
+        print("Message could not be recognized as a data word...")
+    if(read_word.count("1") % 2 == 0):
+        print("Message parity check failed!")
+    else:
+        print("Message parity check passed.")
+    i = i + 1
+    sleep(1.5)
+print("RT02's final recieved message is: \"" + complete_msg + "\"")
 
 # Start cleaning up
+print("Shutting down the imitation terminal and returning control to the original...")
+imposter.__del__()
+sleep(2)
+
 # Shut down RTs
 print("Shutting down RTs...")
-rt1_dos.__del__()
-rt2_dos.__del__()
+rt1_imt.__del__()
+rt2_imt.__del__()
 sleep(.3)
 # Delete bus for next demo
 print("Shutting down data bus...")

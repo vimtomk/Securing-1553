@@ -114,12 +114,12 @@ class command_word(object):
 class data_word(object):
 
     # Initialize each message field, turn the data to binary, and pack the bits.
-    def create_data_word(self, data):
+    def create_data_word(self, dat):
         self.msg_type = BitArray(uint=6,        length=3)   # 3 bit field
-        self.data     = BitArray(uint=data.uint,     length=16)  # 16 bit field
+        #self.data     = BitArray(uint=dat,     length=16)  # 16 bit field
         
     # Create the "data" part of the message.
-        self.msg = BitArray(self.data)
+        self.msg = BitArray(dat)
 
     # Calculate parity of data and append it to the message.
         self.msg.append(BitArray(uint=((self.msg.count(1)) % 2 == 0), length=1))

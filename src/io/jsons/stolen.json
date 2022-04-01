@@ -11,4 +11,17 @@
 {"Event": "Data word intercepted!", "Data Characters": "T0"}
 {"time_year": "2022", "time_month": "03", "time_day": "29", "time_hour": "19", "time_minute": "20", "time_second": "49", "time_microsecond": "443293", "Overheard Message": "11000110010001000010"}
 {"Event": "Data word intercepted!", "Data Characters": "2!"}
-{"Event": "Stopped listening in on the bus!", "time_year": "2022", "time_month": "03", "time_day": "29", "time_hour": "19", "time_minute": "20", "time_second": "50", "time_microsecond": "611985"}
+{"Event": "Stopped listening in on the bus!", "time_year": "2022", "time_month": "03", "time_day": "29", "time_hour": "19", "time_minute": "20", "time_second": "50", "time_microsecond": "611985"}{"Event": "Started listening in on the bus!", "time_year": "2022", "time_month": "03", "time_day": "31", "time_hour": "18", "time_minute": "42", "time_second": "22", "time_microsecond": "856266"}{"time_year": "2022", "time_month": "03", "time_day": "31", "time_hour": "18", "time_minute": "42", "time_second": "22", "time_microsecond": "857291", "Overheard Message": "00000000000000000000"}
+{"time_year": "2022", "time_month": "03", "time_day": "31", "time_hour": "18", "time_minute": "42", "time_second": "25", "time_microsecond": "857584", "Overheard Message": "11001001000011001011"}
+{"Event": "Data word intercepted!", "Data Characters": "He"}
+{"time_year": "2022", "time_month": "03", "time_day": "31", "time_hour": "18", "time_minute": "42", "time_second": "28", "time_microsecond": "857765", "Overheard Message": "11001101100011011001"}
+{"Event": "Data word intercepted!", "Data Characters": "ll"}
+{"time_year": "2022", "time_month": "03", "time_day": "31", "time_hour": "18", "time_minute": "42", "time_second": "31", "time_microsecond": "858085", "Overheard Message": "11001101111001011000"}
+{"Event": "Data word intercepted!", "Data Characters": "o,"}
+{"time_year": "2022", "time_month": "03", "time_day": "31", "time_hour": "18", "time_minute": "42", "time_second": "34", "time_microsecond": "858336", "Overheard Message": "11000100000010100101"}
+{"Event": "Data word intercepted!", "Data Characters": " R"}
+{"time_year": "2022", "time_month": "03", "time_day": "31", "time_hour": "18", "time_minute": "42", "time_second": "37", "time_microsecond": "858562", "Overheard Message": "11001010100001100000"}
+{"Event": "Data word intercepted!", "Data Characters": "T0"}
+{"time_year": "2022", "time_month": "03", "time_day": "31", "time_hour": "18", "time_minute": "42", "time_second": "40", "time_microsecond": "859161", "Overheard Message": "11000110010001000010"}
+{"Event": "Data word intercepted!", "Data Characters": "2!"}
+{"Event": "Stopped listening in on the bus!", "time_year": "2022", "time_month": "03", "time_day": "31", "time_hour": "18", "time_minute": "42", "time_second": "41", "time_microsecond": "974677"}

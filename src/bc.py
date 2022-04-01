@@ -50,11 +50,9 @@ class bc(object):
         
 
         # Begin normal BC behavior
-        self.main()
-        
-
-
-        return
+        print("Pre-malone")
+        threading.Timer(1, self.main()).start() #<-- Line will cause a recursion error if the BC is established outside 1553_simulator.py. Unclear why as of now...
+        print("Post-malone")
 
 
     def main(self):
@@ -64,16 +62,11 @@ class bc(object):
         if(self.exists == "Yes!"): 
             
             # If the BC has been removed, stop execution
-            #threading.Timer(1, self.main()).start() #<-- Line will cause a recursion error if the BC is established outside 1553_simulator.py. Unclear why as of now...
-
-        
-        
-
             # Handle events in the event list if the databus free to be use
             if (not(self.databus.is_in_use())):
                 self.event_handler()
 
-        
+        print("Exit main lol")
         return
 
 
@@ -99,7 +92,7 @@ class bc(object):
     # Validates that a received status word has no errors
     def validate_status_word(self, status_word):
         self.error = 0
-        if (status_word.msg_type_bits !=  "111"):
+        if (status_word.bin[0:3] !=  "111"):
             self.error = 1
         # Check for odd parity in the 16 data bits (exclude the type bits)
         elif ((status_word.raw_data.count(1) % 2) == 0):
@@ -263,6 +256,7 @@ class bc(object):
 
     # Event Handler
     def event_handler(self):
+        print("event handling")
         if(len(self.events) > 0):
             # Remove leftmost (oldest) item in events deque and put it in temp var
             event = self.events.popleft()
@@ -314,9 +308,10 @@ class bc(object):
                 print("Event undefined transfer! ", event[0], "->", event[1])
                 return
         
-        # No more events, therefore exit
+        # No more events, therefore ~~exit~~ pass
         else:
-            exit()
+            #exit()
+            pass
 
     ## TODO: Finish adding logic for waiting on write perms to the bus
 
@@ -607,7 +602,7 @@ class bc(object):
 
         
         #Create a BitArray to be broken up into four BitArrays to transmit 
-        full_public_key = BitArray(uint= self.public_key, length=64)
+        full_public_key = BitArray(uint=self.public_key, length=64)
         data_word_list = [full_public_key[:16], full_public_key[16:32], full_public_key[32:48], full_public_key[48:]]
 
         for rt in self.rt_list:
@@ -618,10 +613,11 @@ class bc(object):
             self.write_message(sendkeysmsg)
             sleep(self.frequency)
             
+            public_key_dw = data_word()
             # BC creates BitArray with its public key, creates a data word with the public key BitArray, then writes the data word to the Bus
-            for data_word in data_word_list:
-                public_key_dw       =      self.create_data_word(data_word)
-                self.write_message(public_key_dw)
+            for d_word in data_word_list:
+                tmp_msg = public_key_dw.create_data_word(d_word)
+                self.write_message(tmp_msg)
                 sleep(self.frequency)
 
             # BC reads a word off of the Bus, it should be the Status word from the RT saying it received the public key
@@ -658,7 +654,7 @@ class bc(object):
             # This loop grabs each data word and appends them to an array
             for x in range(4):
                 rt_public_key_data   =  self.read_message()
-                data_word_list.append(rt_public_key_data.data)
+                data_word_list.append(rt_public_key_data[4:])
 
             #This creates a dictionary of RT public keys [rt# : rt_public_key]
             self.RT_keys[rt] = int(str(data_word_list[0] + data_word_list[1] + data_word_list[2] + data_word_list[3]), 16)

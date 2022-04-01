@@ -49,6 +49,8 @@ class rt(object):
 
         self.frequency          = 1       # Default tie to sleep between events
 
+        self.BC_public_key = None
+
         # For Timer functions, create a variable to check if the RT object still exists before looping execution
         self.exists = "Yes!"
 
@@ -373,6 +375,7 @@ class rt(object):
 
     # Main loop for listening to bus.
     def main(self):
+        print("RT Main running man!!!")
         # This while-True loop may hold up execution of the whole program if main() is run!
         # If this does hold up execution, switch to threading version (or just use read_message_timer?)
         if(self.exists == "Yes!"): # If the BC has been removed, stop execution

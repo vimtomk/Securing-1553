@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import bus
+from bus import bus
 import bc, rt, bm, os, sys, threading, time, message
 from encryptor import DHKE
 import pdb
@@ -12,20 +12,21 @@ sys.setrecursionlimit(100000000)
 
 # Loop here and try-catch
 def main():
-    print("Hello")
 
-    rt_nums = [1]
+
+    # Initialize Bus
+    databus = bus()   
+
+    rt_nums = [1,2]
     
     # Initialize BC
     # Getting stuck here, start here and fix this
-    bus_controller  = bc.bc(3, rt_nums) # BC at terminal 0 and 1 RT at terminal 1
+    bus_controller  = bc.bc(0, rt_nums) # BC at terminal 0 and 1 RT at terminal 1
     print("Hi")
 
     # Initialize RT
     remote_terminal = rt.rt(1)  #Initialize one RT with its number being 1
-
-    # Initialize Bus
-    #databus = bus()    
+ 
 
     
 
@@ -42,13 +43,14 @@ def main():
 
            
             # If RT receives the key successfully it should be able to print out the BC's public key 
-            print(rt.BC_public_key)
+            print(remote_terminal.BC_public_key)
 
             # BC should now send a command word to RT 1 asking for its public key
             bus_controller.receive_public_key()
 
             # If BC receives the key successfully then we should be able to print out the RT's public key
             print(bus_controller.RT_keys[1])
+            print("Hi")
 
             # Create an instance of DHKE for the BC and RT
             bus_controller_ep = DHKE(bus_controller.public_key, remote_terminal.public_key, bus_controller.private_key)

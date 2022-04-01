@@ -49,7 +49,7 @@ class bus(object):
         if(len(in_data) != 20):
             return # Not an array of length 20, do not write!
         for value in in_data:
-            if not ( (in_data[value] == True) or (in_data[value] == False) ):
+            if not ( (value == True) or (value == False) ):
                 return # Not a BitArray, do not write!
         self.__dA9tA9mA6nG0lE9dd = in_data
         return
