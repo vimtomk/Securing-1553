@@ -51,7 +51,7 @@ class bc(object):
 
         # Begin normal BC behavior
         print("Pre-malone")
-        threading.Timer(1, self.main()).start() #<-- Line will cause a recursion error if the BC is established outside 1553_simulator.py. Unclear why as of now...
+        #threading.Timer(1, self.main()).start() #<-- Line will cause a recursion error if the BC is established outside 1553_simulator.py. Unclear why as of now...
         print("Post-malone")
 
 
@@ -339,6 +339,7 @@ class bc(object):
         # Create and issue the command word for the receiving RT
         tmp_msg_rx     =    self.create_command_word(rt_num_rx, self.rx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_rx)
+        (self.rt_list[self.rt_list.index(rt_num_rx)]).read_permission = True
         self.write_permisison = False
         # Set the designated rt's write permission to True and wait to be given back write perms
         (self.rt_list[self.rt_list.index(rt_num_rx)]).write_permission = True

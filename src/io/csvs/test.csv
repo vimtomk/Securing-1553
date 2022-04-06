@@ -1,2 +1,4 @@
-Src,Dst,Repeat?,Freq (Hz),Num_Occurences,Msg Type,Data (str)
+Src,Dst,Repeat?,Freq (Hz),Num_Occurences,msg type,Data
+BC,RT03,N,1,-1,dhke,
+RT03,BC,N,1,-1,dhke,
 BC,RT03,N,1,2,data,Hello

@@ -3,12 +3,15 @@
 from bus import bus
 import bc, rt, bm, os, sys, threading
 
+
 databus = bus()     # Points to the shared bus
 bc_num  = 0         # Terminal Number of the BC
 bm_num  = 0         # Terminal Number of the BM
 rt_nums = []        # List of RT numbers
-time_interval = 0   # How long, in seconds, each time interval should be
+time_interval = 1   # How long, in seconds, each time interval should be
 script = []         # Queue of information from input .csv
+
+
 
 def parse_csv():
     '''Parses out a .csv file into the initialization parameters and action script.
@@ -42,11 +45,66 @@ def parse_csv():
     # The rest of script[] should contain only the messages portion
     return
 
+# Parse the .csv
+parse_csv()
+# Set up the bc, bm, and rts
+bus_monitor     = bm.bm(bm_num, time_interval)
+remote_terminals = []
+for rt_num in rt_nums:
+    remote_terminals.append(rt.rt(int(rt_num)))
+
+bus_controller  = bc.bc(bc_num, rt_nums) # Bus controller is passed a list of all RT numbers
+#remote_terminals) # Bus controller is passed a list of pointers to all RT instances <-- OUTDATED ARG TO BC CONSTRUCTOR
+
+# Set everything to begin listening in periodically at the same time interval
+#threading.Timer(time_interval, bus_controller.read_message_timer(time_interval)).start()
+threading.Timer(time_interval, bus_controller.main()).start()
+# Already created thread in line 52
+#threading.Timer(time_interval, bus_monitor.record_bus_contents(time_interval)).start()
+for remote_terminal in remote_terminals:
+    threading.Timer(time_interval, remote_terminal.read_message_timer(time_interval)).start()
+# Process the messages
+try:
+    while(script.size != 0):
+        #time.wait(time_interval) # Trickles out commands so they are not all sent at once
+        # Parse command by commas into fields
+        command = (script.pop(0)).split(",")
+        if(bus_controller.return_terminal_num() < 10):
+            ph = "0" + str(bus_controller.return_terminal_num())
+        else:
+            ph = str(bus_controller.return_terminal_num())
+        # Check if the BC needs to process this command
+        if( ph == command[0][2:]):
+            # The BC is meant to process this command
+            bus_controller.queue_message(command)
+        # Check if any RT needs to process this command
+        for terminal in remote_terminals:
+            if(ph == command[0][2:]):
+                # This RT/BC is the sender in this command
+                # Pass instruction to RT
+                terminal.queue_message(command)
+                # Pass a copy of the event to BC
+                bus_controller.queue_message(command)
+
+# On Keyboard Interrupt, exit the program and deallocate memory
+except KeyboardInterrupt:
+    # Delete all RTs
+    for terminal in remote_terminals:
+        terminal.__del__()
+    # Delete BM
+    bus_monitor.__del__()
+    # Delete BC
+    bus_controller.__del__()
+    # Delete bus - Comment out if other objects not created in this file are still relying on the bus to work.
+    databus.__del__()
+    exit()
+
+"""
 def main():
     # Parse the .csv
     parse_csv()
     # Set up the bc, bm, and rts
-    bus_monitor     = bm.bm(bm_num)
+    bus_monitor     = bm.bm(bm_num, time_interval)
     remote_terminals = []
     for rt_num in rt_nums:
         remote_terminals.append(rt.rt(int(rt_num)))
@@ -55,8 +113,10 @@ def main():
     #remote_terminals) # Bus controller is passed a list of pointers to all RT instances <-- OUTDATED ARG TO BC CONSTRUCTOR
     
     # Set everything to begin listening in periodically at the same time interval
-    threading.Timer(time_interval, bus_controller.read_message_timer(time_interval)).start()
-    threading.Timer(time_interval, bus_monitor.record_bus_contents(time_interval)).start()
+    #threading.Timer(time_interval, bus_controller.read_message_timer(time_interval)).start()
+    threading.Timer(time_interval, bus_controller.main()).start()
+    # Already created thread in line 52
+    #threading.Timer(time_interval, bus_monitor.record_bus_contents(time_interval)).start()
     for remote_terminal in remote_terminals:
         threading.Timer(time_interval, remote_terminal.read_message_timer(time_interval)).start()
 
@@ -95,5 +155,4 @@ def main():
         # Delete bus - Comment out if other objects not created in this file are still relying on the bus to work.
         databus.__del__()
         exit()
-
-main
+"""

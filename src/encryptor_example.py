@@ -50,16 +50,22 @@ def main():
 
             # If BC receives the key successfully then we should be able to print out the RT's public key
             print(bus_controller.RT_keys[1])
-            print("Hi")
+            
 
             # Create an instance of DHKE for the BC and RT
             bus_controller_ep = DHKE(bus_controller.public_key, remote_terminal.public_key, bus_controller.private_key)
             remote_terminal_ep = DHKE(remote_terminal.public_key, bus_controller.public_key, remote_terminal.private_key)
-           
+            
+            print("Bus Controller Public Key: " + str(bus_controller.public_key))
+            print("Remote Terminal Public Key: " + str(remote_terminal.public_key))
+
+
 
             #Create partial key and full key for each device respectfully
             bus_controller_ep.generate_partial_key()
             bus_controller_ep.generate_full_key()
+
+            print(bus_controller_ep.full_key)
 
             remote_terminal_ep.generate_partial_key()
             remote_terminal_ep.generate_full_key()
@@ -77,7 +83,7 @@ def main():
             bus_controller.BC_RT_Transfer(1, encrypted_message)
            
 
-            remote_terminal.main()
+            
      
             
      

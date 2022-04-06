@@ -194,8 +194,8 @@ class rt(object):
         array = self.string_to_tokens(data)
         msg_count = len(array)
 
-        # Listen for command word
-        sleep(self.frequency)
+        # Listen for command word once BC sends it
+        self.wait_for_read_perm()
         bc_command_word = self.read_message()
 
         # Transmit status word
