@@ -43,7 +43,7 @@ class attacker(object):
                 if(terminal_dst < 0 or terminal_dst > 30 or (type(terminal_dst) is not int)):
                     print("That was not a valid terminal number. Please pass an integer from 0-30.")
                     self.__del__()
-                self.imitate(terminal_src, terminal_dst, frequency, demo_mode)
+                Timer(0, self.imitate, [terminal_src, terminal_dst, frequency, demo_mode])
             pass #TODO: Define behavior for imitation
         else:
             print("Sorry, that attack type is not recognized or implemented. Exiting...")
