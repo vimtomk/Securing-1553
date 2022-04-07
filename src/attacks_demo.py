@@ -30,7 +30,7 @@ def string_to_tokens(in_string):
 
 print("Starting the attack demonstration.")
 sleep(.3)
-'''print("Order of attacks will be DoS, then eavesdropping, then imitation.")
+print("Order of attacks will be DoS, then eavesdropping, then imitation.")
 sleep(2)
 
 #-PART 1 : DoS Attack------------------
@@ -144,7 +144,7 @@ sleep(2)
 # We will have terminals engage in normal data transfer. A compromised terminal, or new terminal on the bus (as in this demo), is able to hear everything
 # Our attacker will log all communications from the bus, and if it overhears a data word it will log what was heard as text
 
-print("Now starting the eavesdropping attack demonstration...")
+print("\nNow starting the eavesdropping attack demonstration...")
 sleep(2)
 
 # Start bus
@@ -195,7 +195,7 @@ print("RT02's final recieved message is: \"" + complete_msg + "\"")
 # Start cleaning up
 # Shut down attacker
 print("Shutting down the snooping terminal...")
-snooper.__del__()
+snooper.stop_eavesdropping()
 sleep(3)
 # Shut down RTs
 print("Shutting down RTs...")
@@ -206,7 +206,7 @@ sleep(.3)
 print("Shutting down data bus...")
 databus.__del__()
 sleep(.3)
-print("\nCheck the log file in \\io\\jsons called \"stolen.json\" \n")
+print("Check the log file in \\io\\jsons called \"stolen.json\" \n")
 #sleep(2)
 
 
@@ -216,10 +216,9 @@ print("\nCheck the log file in \\io\\jsons called \"stolen.json\" \n")
 # Due to 1553's specifics, this causes the target RT to never try and send messages until it gets a "Transmit Last Status" word from the BC
 # But since the BC didn't tell the RT to listen, the BC doesn't think to check the status of the RT. So the RT is effectively disabled
 # until the attacker releases control by sending a "Transmit Last Status" word and re-activating the RT it was imitating
-'''
+
 print("Now starting the imitation attack demonstration...")
 sleep(2)
-##TODO: Figure out how to 
 # Start bus
 print("Initializing data bus...")
 databus = bus()
@@ -259,19 +258,23 @@ else:
 sleep(1.5)
 print("Now starting the imitation attack. Initializing the attacker...")
 imposter = attacker("Imitation", 1.5, terminal_src = 1, terminal_dst = 2, demo_mode = 1)
+sleep(1.5)
 com_word = rt1_imt.databus.read_BitArray()
-if((com_word.bin[:3] == "110") and (com_word.bin[3:8] == "00010")):
+if((com_word.bin[:3] == "101") and (com_word.bin[3:8] == "00001")):
     print("RT01 got a command word!")
-    if((com_word[8] == False) and not ((com_word[9:14] == '00000') or (com_word[9:14] == '11111'))):
+    if((com_word.bin[8] == '0') and not ((com_word.bin[9:14] == '00000') or (com_word.bin[9:14] == '11111'))):
         print("RT01's command was to listen in for " + str(int(com_word[14:19].bin, 2)) \
             + " data words!\nThis effectively silences the terminal until it is asked to send status...")
     else:
         print("RT01's command was not to listen...")
 else:
     print("RT01 failed to get the silencing command...")
+sleep(1.5)
+complete_msg = ""
 i = 0
 while(i < 3):
     read_word = rt2_imt.databus.read_BitArray()
+    rt2_imt.databus.clear_bus() # Make sure the same message isn't being read repeatedly
     print("RT02 got a message!")
     sleep(.1)
     if(read_word.bin[:3] == "110"):
@@ -279,6 +282,7 @@ while(i < 3):
         complete_msg = complete_msg + (chr(int(read_word.bin[3:11],2)) + chr(int(read_word.bin[11:19],2)))
     else:
         print("Message could not be recognized as a data word...")
+        print("The message was : " + read_word.bin)
     if(read_word.count("1") % 2 == 0):
         print("Message parity check failed!")
     else:

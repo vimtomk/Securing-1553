@@ -3,7 +3,7 @@
 # This file implements the functionality of an attacker on the 1553 bus
 # For now, it is a placeholder
 
-from threading import Timer
+from threading import Thread, Timer
 from datetime import datetime
 from os import getcwd
 from json import dump
@@ -33,7 +33,7 @@ class attacker(object):
                 dump(event, event_dumped)
             self.eavesdrop(frequency)
         elif(atk_type == "Imitation"):
-            if(terminal_src == 32 or terminal_dst == 32):
+            if(demo_mode == 0 and (terminal_src == 32 or terminal_dst == 32)):
                 print("Can't imitate without a designated terminal number! Two ints 0-30 as arguments, src and dst.")
                 self.__del__()
             else:
@@ -43,8 +43,8 @@ class attacker(object):
                 if(terminal_dst < 0 or terminal_dst > 30 or (type(terminal_dst) is not int)):
                     print("That was not a valid terminal number. Please pass an integer from 0-30.")
                     self.__del__()
-                Timer(0, self.imitate, [terminal_src, terminal_dst, frequency, demo_mode])
-            pass #TODO: Define behavior for imitation
+                self.src = terminal_src
+                Thread(target=self.imitate_start, args=(terminal_src, terminal_dst, frequency, demo_mode)).run()
         else:
             print("Sorry, that attack type is not recognized or implemented. Exiting...")
             self.__del__()
@@ -82,6 +82,15 @@ class attacker(object):
                 event_dumped.write("\n")
         return
 
+    def stop_eavesdropping(self):
+        # Indicate the end of logging if doing an eavesdropping attack
+        if(self.atk == "Eavesdropping"):
+            event = {"Event" : "Stopped listening in on the bus!"}
+            self.addtime(event)
+            with open(getcwd() + '/io/jsons/stolen.json', 'a') as event_dumped :
+                dump(event, event_dumped)
+        self.__del__()
+
     def addtime(self, dictionary):
         '''Takes a dictionary and adds entries for the approximate date and time of function call, down to the microsecond'''
         temp_dt = datetime.now()
@@ -94,28 +103,31 @@ class attacker(object):
         dictionary['time_microsecond'] = temp_dt.strftime('%f')
         return
 
-    def imitate(self, num_src, num_dst, frequency, demo_flag):
+    def imitate_start(self, num_src, num_dst, frequency, demo_flag):
         '''Pretends to be a valid RT'''
-        sleep(frequency)
         self.src = num_src
         if(demo_flag == 1):
             print("Attacker is now going to imitate RT" + str(num_src) + " and send data to RT" + str(num_dst))
-        data = ["IM", "RT", str(num_src)]
-        if (len(str(data[2])) != 2):
-            data[2] = "0" + str(data[2])
         # Shut up the RT that is being imitated. Send command word to listen for the maximum possible time, rendering the RT inert for a while.
         hush_command =  '0b101' + BitArray(uint=num_src, length=5).bin + '0' + '10101' + '11111'
         if(hush_command.count('1') % 2 == 0):
             hush_command = hush_command + '1'
         else:
             hush_command = hush_command + '0'
-        sleep(frequency) # Wait for receptive RT to be silenced
         self.bus.write_BitArray(BitArray(hush_command))
-        # Now, wait for BC instruction to transmit.
+        #sleep(frequency) # Wait for receptive RT to be silenced
+        Timer(frequency, self.imitate_write, [num_src, num_dst, frequency, demo_flag]).start()
+    
+    def imitate_write(self, num_src, num_dst, frequency, demo_flag):
+        sleep(frequency)
+        data = ["IM", "RT", str(num_src)]
+        if (len(str(data[2])) != 2):
+            data[2] = "0" + str(data[2])
         go_ahead = 0
         if(demo_flag == 1):
             go_ahead = 1 # Demo will not wait for a BC to permit speaking
-            allowed_sends = 3        
+            allowed_sends = 3
+        # Now, wait for BC instruction to transmit.    
         while go_ahead == 0:
             sleep(frequency)
             msg = self.bus.read_BitArray()
@@ -154,16 +166,13 @@ class attacker(object):
     # Destructor
     def __del__(self):
         '''This is the destructor of the attacker object'''
-        # Indicate the end of logging if doing an eavesdropping attack
-        if(self.atk == "Eavesdropping"):
-            event = {"Event" : "Stopped listening in on the bus!"}
-            self.addtime(event)
-            with open(getcwd() + '/io/jsons/stolen.json', 'a') as event_dumped :
-                dump(event, event_dumped)
         self.exists = "No."
         # Re-activate the imitated RT after ceasing imitation the attack
         if(self.atk == "Imitation"):
-            tmp = '0b101' + BitArray(uint=self.src, length=5).bin + '1' + '00000' + '00010'
+            src_bits = bin(self.src)[2:]
+            while len(src_bits) < 5:
+                src_bits = "0" + src_bits
+            tmp = '0b101' + src_bits + '1' + '00000' + '00010'
             if(tmp.count('1') % 2 == 0):
                 tmp = tmp + "1"
             else:

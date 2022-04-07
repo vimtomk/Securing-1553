@@ -56,9 +56,6 @@ class rt(object):
 
         print("RT {} Init Successful".format(self.num.int)) # Debug line
 
-        # Start listening immediately
-        #self.main()
-
 
 
     # Returns the Remote Terminal ID number (0-31)
@@ -74,6 +71,7 @@ class rt(object):
     # Event Handler
     def event_handler(self):
         if len(self.events > 0):
+            
             # Remove leftmost (oldest) item in events deque and put it in temp var
             event = self.events.popleft()
             

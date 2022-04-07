@@ -44,9 +44,7 @@ class bm(object):
     # Recursive function to periodically record the contents of the bus.
     def record_bus_contents(self):
         '''This will get the contents of the bus and record it every so often'''
-        if(self.exists == "Yes!"):
-            threading.Timer(self.frequency, self.record_bus_contents).start()
-        else:
+        if(self.exists != "Yes!"): # Make sure at the time of calling that the BM still exists
             return
         tmp_message = self.bus.read_BitArray()
         # Is there anything new on the bus?
@@ -113,6 +111,9 @@ class bm(object):
         if(self.current_filename == "Not set"):
             self.defualt_filename_to_date()
         self.record_bus_contents()
+        while(self.exists == "Yes!"): # Loop reading the bus for as long as the BM remains active
+            threading.Timer(self.frequency, self.record_bus_contents).start()
+            sleep(self.frequency)
         return
     
     # BM Destructor

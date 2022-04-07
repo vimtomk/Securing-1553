@@ -63,7 +63,7 @@ class bc(object):
             
             # If the BC has been removed, stop execution
             # Handle events in the event list if the databus free to be use
-            if (not(self.databus.is_in_use())):
+            if (not(self.databus.is_in_use()) and self.write_permission == True):
                 self.event_handler()
 
         print("Exit main lol")
