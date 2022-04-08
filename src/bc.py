@@ -13,12 +13,12 @@ from math import ceil
 
 class bc(object):
     # BC Constructor
-    def __init__(self, terminal, rts):
+    def __init__(self, terminal, rt_array=[]):
 
         # Initialize BC variables
         self.num            = BitArray(uint=terminal, length=5)     # Value indicating the terminal the bus controller is operating from
         self.received_data  = list()    # A list of the received messages used in context to keep track of data needed for received status words
-        self.rt_list        = rts       # Bus controller's known RTs, pass "rts" in as a list of values from 0-30 (31 reserved for broadcast)
+        self.rt_list        = rt_array  # Bus controller's known RTs, pass "rts" in as a list of values from 0-30 (31 reserved for broadcast)
         self.error          = 0         # Flag to indicate if there is a communications error
         self.init_bus       = 0         # Flag to indicate if bus has been initialised
         self.dead_list      = list()    # List the discarded RTs marked by an alive check
@@ -46,13 +46,6 @@ class bc(object):
 
         # For Timer functions, create a variable to check if the BC object still exists before looping execution
         self.exists = "Yes!"
-
-        
-
-        # Begin normal BC behavior
-        print("Pre-malone")
-        #threading.Timer(1, self.main()).start() #<-- Line will cause a recursion error if the BC is established outside 1553_simulator.py. Unclear why as of now...
-        print("Post-malone")
 
 
     def main(self):

@@ -373,89 +373,83 @@ class rt(object):
 
     # Main loop for listening to bus.
     def main(self):
-        print("RT Main running man!!!")
-        # This while-True loop may hold up execution of the whole program if main() is run!
-        # If this does hold up execution, switch to threading version (or just use read_message_timer?)
-        if(self.exists == "Yes!"): # If the BC has been removed, stop execution
-            threading.Timer(.25, self.main()).start() # Currently configured : Check each quarter second.
-        #while True:
+        print("RT Main running!!!")
             
-            ## TODO: Once logic is understood for each transfer type, 
-            # implement the if-else, and set up contextual decision making
-            # i.e., understand what to do with the next message
+        ## TODO: Once logic is understood for each transfer type, 
+        # implement the if-else, and set up contextual decision making
+        # i.e., understand what to do with the next message
 
-            # Grabs first message from bus if bus not empty and not in use
-            if not(self.databus.is_empty()):
-                # Wait for databus to not be in use.
-                while (self.databus.is_in_use()):
-                    sleep(0.01)
-                    pass
-                tmp_msg = self.read_message()
+        # Grabs first message from bus if bus not empty and not in use
+        if not(self.databus.is_empty()):
+            # Wait for databus to not be in use.
+            while (self.databus.is_in_use()):
+                sleep(0.01)
+                pass
+
+            tmp_msg = self.read_message()
                 
-                # Use RT method that passes bus queue to RT and processes the first message on the queue
-                if (tmp_msg.bin[3:8] == BitArray(uint=self.num, length=5)) and (tmp_msg.bin[0:3] == "101"): # Command Word
-                    
-                    # Store copy of relevent bits
-                    self.last_command_word = tmp_msg
-                    self.received_msgs.append(tmp_msg)
+            # Use RT method that passes bus queue to RT and processes the first message on the queue
+            if (tmp_msg.bin[3:8] == BitArray(uint=self.num, length=5)) and (tmp_msg.bin[0:3] == "101"): # Command Word
+                
+                # Store copy of relevent bits
+                self.last_command_word = tmp_msg
+                self.received_msgs.append(tmp_msg)
 
-                    # This will set the Remote Terminal's Transfer/Receiving Mode
-                    if tmp_msg[8] == BitArray(uint=1, length=1):
-                            # This puts the Remote Terminal in Transfer mode
-                            self.rx_tx_mode == BitArray(uint=1, length=1)    
+                # Sets the tx/rx mode. 1 means transmit, 0 means receive
+                self.rx_tx_mode = tmp_msg.bin[8]
+                # If transmit set to 1
+                if self.rx_tx_mode == '1':
+                    pass
+                
+                # If the subadress mode is zero or thirty-one the remote terminal will look at the next field
+                # to see what the mode code is and take action accordingly
+                if (tmp_msg.bin[9:14] == BitArray(uint=0, length=5) or tmp_msg.bin[9:14] == BitArray(uint=31, length=5)):
+                
+                    self.process_mode_code(tmp_msg.bin[9:14])
+                    
+                # The mode code field will else represent the number of words the RT needs to transmit or receive
+                else:   
+                    
+                    # Creates a message count of how many words to either transmit or receive
+                    msg_count = tmp_msg.bin[14:19]
+                     
+                    # The RT will create data words to transmit 
+                    if self.rx_tx_mode == 1:
+                        
+                        # Looks at the event list to see what message to send 
+                        sending_msg = self.events.pop()
+                        char_pairs = self.string_to_tokens(sending_msg[6])
+                        
+                        # Create data words
+                        data_send_list = []
+                        for char_pair in char_pairs:
+                            complete_data_word = "0b110" + bin(ord(char_pair[0]))[2:] + bin(ord(char_pair[1]))[2:]
+                            if(complete_data_word.count(1) % 2 == 0):
+                                complete_data_word = complete_data_word + "1"
+                            else:
+                                complete_data_word = complete_data_word + "0"
+                            complete_data_word = BitArray(complete_data_word)
+                            data_send_list.append(complete_data_word)
+
+                        # Send data words in time to be taken in by recipient
+                        #TODO: Finish
+                        # This maybe could be handled by queueing up messages for write_message_timer to send out
+                        pass
+                        
+                    # The RT will prepare to receive data words 
                     else:
-                            # Keeps RT in Receiving mode
-                            self.rx_tx_mode == BitArray(uint=0, length=1)        
-                    
-                    # If the subadress mode is zero or thirty-one the remote terminal will look at the next field
-                    # to see what the mode code is and take action accordingly
-                    if (tmp_msg.bin[9:14] == BitArray(uint=0, length=5) or tmp_msg.bin[9:14] == BitArray(uint=31, length=5)):
-                    
-                        self.process_mode_code(tmp_msg.bin[9:14])
-                    
-                    # The mode code field will else represent the number of words the RT needs to transmit or receive
-                    else:   
                         
-                        # Creates a message count of how many words to either transmit or receive
-                        msg_count = tmp_msg.bin[14:19]
-                         
-                        # The RT will create data words to transmit 
-                        if self.rx_tx_mode == 1:
-                            
-                            # Looks at the event list to see what message to send 
-                            sending_msg = self.events.pop()
-                            char_pairs = self.string_to_tokens(sending_msg[6])
-                            
-                            # Create data words
-                            data_send_list = []
-                            for char_pair in char_pairs:
-                                complete_data_word = "0b110" + bin(ord(char_pair[0]))[2:] + bin(ord(char_pair[1]))[2:]
-                                if(complete_data_word.count(1) % 2 == 0):
-                                    complete_data_word = complete_data_word + "1"
-                                else:
-                                    complete_data_word = complete_data_word + "0"
-                                complete_data_word = BitArray(complete_data_word)
-                                data_send_list.append(complete_data_word)
+                        data_word_list = []
 
-                            # Send data words in time to be taken in by recipient
-                            #TODO: Finish
-                            # This maybe could be handled by queueing up messages for write_message_timer to send out
-                            pass
-                        
-                        # The RT will prepare to receive data words 
-                        else:
+                        for msg in range(0, msg_count):
                             
-                            data_word_list = []
-
-                            for msg in range(0, msg_count):
-                                
-                                # Reads the data word off of the data bus
-                                msg = self.read_message()
-                                char1 = chr(int(msg[0:8], 2))
-                                char2 = chr(int(msg[8:], 2))
-                                data_word_list.append(char1 + char2)
-                                sleep(self.frequency)
-                                
+                            # Reads the data word off of the data bus
+                            msg = self.read_message()
+                            char1 = chr(int(msg[0:8], 2))
+                            char2 = chr(int(msg[8:], 2))
+                            data_word_list.append(char1 + char2)
+                            sleep(self.frequency)
+                            
                             for ch in data_word_list:
                                 message += ch
 
@@ -465,22 +459,20 @@ class rt(object):
                             status_word = self.create_status_word()
                             self.issue_status_word(status_word)
                             
-                # The RT has received a broadcast message                
-                elif (tmp_msg.rt_addr.bin == BitArray(uint=31, length=5).bin):
-                    #TODO: Watch for broadcasted status words w/ non-zero 
-                    #      reserved bits as a form of synchronizing keys 
-                    return
+            # The RT has received a broadcast message                
+            elif (tmp_msg.rt_addr.bin == BitArray(uint=31, length=5).bin):
+                #TODO: Watch for broadcasted status words w/ non-zero 
+                #      reserved bits as a form of synchronizing keys 
+                pass
 
-                # We have encountered some type of error in the message type bits
-                # (not defined as data/command/status word)
-                else: 
-                    print("RT#" + self.num + " has received a word with unknown message type.")
+            # We have encountered a data-word that is not a command word
+            else: 
+                pass
 
-            # Databus is either empty, or we are done getting messages so sleep.
-            #sleep(0.25) # Currently configured : Check each quarter second.
+        # Databus is either empty, or we are done getting messages so wait for thread timer to be called again
         else:
-            return
-        return
+            pass
+        pass
     # End of main()
     
     def queue_message(self, command):

@@ -28,16 +28,15 @@ def string_to_tokens(in_string):
                 out_tokens.append( in_string[2 * j] + in_string[2 * j + 1])
         return out_tokens
 
-print("Starting the attack demonstration.")
-sleep(.3)
+print("Starting the attacks demonstration.")
 print("Order of attacks will be DoS, then eavesdropping, then imitation.")
-sleep(2)
 
 #-PART 1 : DoS Attack------------------
 # In this part, we will prove that the 1553 is vulnerable to DoS attacks as a result of every terminal being assumed to act in good faith
 # A compromised terminal, or new terminal plugged into the bus (as in this demo), is able to speak without permissions from the BC
 # Our attacker will take a normal bus conversation and interfere with junk data, scrambling data and confusing terminals
-
+print("\nPress enter to continue to the DoS attack...")
+input()
 print("Now starting the DoS attack demonstration...")
 sleep(2)
 
@@ -137,14 +136,15 @@ sleep(.3)
 # Delete bus for next demo
 print("Shutting down data bus...")
 databus.__del__()
-sleep(2)
 
 #-PART 2 : Eavesdropping Attack--------
 # In this part, we will prove that the 1553 emulator is vulnerable to Eavesdropping attacks as a result of there being no encryption
 # We will have terminals engage in normal data transfer. A compromised terminal, or new terminal on the bus (as in this demo), is able to hear everything
 # Our attacker will log all communications from the bus, and if it overhears a data word it will log what was heard as text
 
-print("\nNow starting the eavesdropping attack demonstration...")
+print("\nPress enter to continue to the eavesdropping attack...")
+input()
+print("Now starting the eavesdropping attack demonstration...")
 sleep(2)
 
 # Start bus
@@ -207,8 +207,6 @@ print("Shutting down data bus...")
 databus.__del__()
 sleep(.3)
 print("Check the log file in \\io\\jsons called \"stolen.json\" \n")
-#sleep(2)
-
 
 #-PART 3 : Imitation Attack------------
 # In this part, we will prove the 1553 is vulnerable to imitation attacks
@@ -217,6 +215,8 @@ print("Check the log file in \\io\\jsons called \"stolen.json\" \n")
 # But since the BC didn't tell the RT to listen, the BC doesn't think to check the status of the RT. So the RT is effectively disabled
 # until the attacker releases control by sending a "Transmit Last Status" word and re-activating the RT it was imitating
 
+print("Press enter to continue to the imitation attack...")
+input()
 print("Now starting the imitation attack demonstration...")
 sleep(2)
 # Start bus

@@ -11,7 +11,7 @@ rt_nums = []        # List of RT numbers
 time_interval = 1   # How long, in seconds, each time interval should be
 script = []         # Queue of information from input .csv
 
-
+# Demo BC->RT, RT->BC, RT->RT; in that order
 
 def parse_csv():
     '''Parses out a .csv file into the initialization parameters and action script.
@@ -62,7 +62,7 @@ threading.Timer(time_interval, bus_controller.main()).start()
 # Already created thread in line 52
 #threading.Timer(time_interval, bus_monitor.record_bus_contents(time_interval)).start()
 for remote_terminal in remote_terminals:
-    threading.Timer(time_interval, remote_terminal.read_message_timer(time_interval)).start()
+    threading.Timer(time_interval, remote_terminal.main()).start()
 # Process the messages
 try:
     while(script.size != 0):
