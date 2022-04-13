@@ -38,8 +38,10 @@ class bc(object):
         self.dwords_stored      = ""        # Stores a string of data words as they come in, eventually being output to the terminal.
 
         # Flags for handling execution of message transfers
-        self.read_permission    = True      # Keeps track of if the BC is O.K. to read from the bus
-        self.write_permission   = False     # Keeps track of if the BC is the one who should be writing to the bus this cycle
+        self.num_reads          = 0         # Count indicating how many data words the BC has to read from the bus in a given transfer
+        self.num_writes         = 0         # Count indicating how many data words the BC has to write to the bus in a given transfer
+        self.reading            = True      # Keeps track of if the BC is O.K. to read from the bus
+        self.writing            = False     # Keeps track of if the BC is the one who should be writing to the bus this cycle
 
         self.public_key         = None      # Initialized to none type because it is initialized when a function is called
         self.private_key        = None      # Initialized to none type because it is initialized when a function is called
@@ -50,13 +52,12 @@ class bc(object):
 
     def main(self):
 
-    
         # Loop the execution of BC frequently, and let it orchestrate bus communications
         if(self.exists == "Yes!"): 
             
             # If the BC has been removed, stop execution
             # Handle events in the event list if the databus free to be use
-            if (not(self.databus.is_in_use()) and self.write_permission == True):
+            if (not(self.databus.is_in_use()) and self.writing == True):
                 self.event_handler()
 
         print("Exit main lol")
@@ -123,6 +124,7 @@ class bc(object):
         msg_out = data_word.create_data_word(data)
         return msg_out
 
+    """
     # For each rt on the bus, create a command word one at a time and wait for response (status check)
     def check_rts(self):
         
@@ -160,7 +162,8 @@ class bc(object):
             else:
                 self.rt_list.remove(rt)
         return
-
+    """
+    
     # Read message from bus (20 bits)
     def read_message(self):
         tmp = self.databus.read_BitArray()
@@ -213,7 +216,7 @@ class bc(object):
     def write_message_timer(self):
         '''At the end of a time interval, this function is called and if the terminal has a need and the permissions
         to write to the bus, it will do so.'''
-        if((self.write_permission == False) or (len(self.events) == 0)): # If there is no permission to write anything or nothing to write, return immediately.
+        if((self.writing == False) or (len(self.events) == 0)): # If there is no permission to write anything or nothing to write, return immediately.
             return
         print("Writing a message to the bus!")
         #self.databus.write_BitArray(self.event_to_word(self.events.pop()))
@@ -230,14 +233,21 @@ class bc(object):
 
     # Function to wait on write permissions to continue execution.
     def wait_for_write_perm(self):
-        while(not(self.write_permission)):
+        while(not(self.writing)):
+            sleep(0.01)
+            pass
+        return
+
+    # Function to wait for an RT to stop reading/writing before continuing execution
+    def wait_until_rt_finishes(self, rt):
+        while(rt.reading or rt.writing): # Checks RT's reading and writing flags
             sleep(0.01)
             pass
         return
 
     # Function to wait on read permissions to continue execution.
     def wait_for_read_perm(self):
-        while(not(self.read_permission)):
+        while(not(self.reading)):
             sleep(0.01)
             pass
         return
@@ -261,21 +271,19 @@ class bc(object):
                     event[4] = str(int(event[4]) - 1)
                     self.events.append(event)
                 
-                elif (int(event[4]) == -1):
+                elif (int(event[4]) <= -1):
                     self.events.append(event)
             
             # Wait until bus is not in use before continuing (checking each 5 ms)
             while (self.databus.is_in_use == 1):
                 sleep(0.005)
-                pass
 
             # Set databus as being in use
             self.databus.set_in_use(1)
-            self.write_permission = True
-
+            self.writing = True
 
             # BC -> RT
-            if (event[0][:2] == "BC" and event[1][:2] == "RT" and self.write_permission == True):
+            if (event[0][:2] == "BC" and event[1][:2] == "RT"):
                 print("BC to RT transfer!")
                 # Do the BC->RT transfer
                 self.BC_RT_Transfer(int(event[1][-2:]), event[6])
@@ -301,12 +309,9 @@ class bc(object):
                 print("Event undefined transfer! ", event[0], "->", event[1])
                 return
         
-        # No more events, therefore ~~exit~~ pass
+        # No more events
         else:
-            #exit()
-            pass
-
-    ## TODO: Finish adding logic for waiting on write perms to the bus
+            print("All events have been processed.")
 
     # BC -> RT
     ## Bus Controller to Remote Terminal Transfer
@@ -328,23 +333,21 @@ class bc(object):
             bs  = Bits('0b'+(''.join(format(i, '08b') for i in bytearray(strn, encoding='utf-8'))))
             bit_string_list.append(bs)     
 
-        
         # Create and issue the command word for the receiving RT
         tmp_msg_rx     =    self.create_command_word(rt_num_rx, self.rx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_rx)
-        (self.rt_list[self.rt_list.index(rt_num_rx)]).read_permission = True
-        self.write_permisison = False
+        (self.rt_list[self.rt_list.index(rt_num_rx)]).reading = True
+        self.writing = False
+
         # Set the designated rt's write permission to True and wait to be given back write perms
-        (self.rt_list[self.rt_list.index(rt_num_rx)]).write_permission = True
-        self.wait_for_write_perm()
+        (self.rt_list[self.rt_list.index(rt_num_rx)]).writing = True
+        self.wait_until_rt_finishes(self.rt_list[self.rt_list.index(rt_num_rx)])
         
         # Create and issue 1 to 32 16-bit data words
         for bs in bit_string_list:
-            ## TODO: Get a better timer system b/w BC and RT
             sleep(self.frequency)
             data_msg     =    self.create_data_word(bs)
             self.issue_data_word(data_msg)
-            
         
         # Create and issue the status word from the receiving RT
         rt_status_word      =    self.read_message()
@@ -357,8 +360,8 @@ class bc(object):
             self.error = 1
             return
         
-        # Unset the BC write permission when done
-        #self.write_permission =False
+        # Make sure BC has write permissions before next event
+        self.writing = True
         print("The transfer from BC to RT " + rt_num_rx + " has terminated.")
         return
 
@@ -369,21 +372,18 @@ class bc(object):
     ## immediately followed by 1 to 32 words.
     def RT_BC_Transfer(self, rt_num_tx, data):
         
-        # Creates an array of two characters that will later be turning into 16 bit data words
-        array = self.string_to_tokens(data)
-
-        # Creates a message count to pass to the create command word function to tell the RT how many words to send
-        msg_count = len(array)     
+        # Calculate number of data words that will be transferred
+        msg_count = ceil(len(data))
         
         # Create and issue the command word for the transmitting RT
-        tmp_msg_tx     =    self.create_command_word(rt_num_tx, self.tx, self.zero, msg_count)
+        tmp_msg_tx = self.create_command_word(rt_num_tx, self.tx, self.zero, msg_count)
         self.issue_command_word(tmp_msg_tx)
-        self.write_permission = False
-        (self.rt_list[self.rt_list.index(rt_num_tx)]).write_permission = True
+        self.writing = False
+        (self.rt_list[self.rt_list.index(rt_num_tx)]).writing = True
         
         # Waits for a status word to be received from the transmitting RT and validate it
         
-        rt_status_word =    self.read_message()
+        rt_status_word = self.read_message()
         sleep(self.frequency)
         
         if (self.validate_status_word(rt_status_word) == 0):
@@ -408,10 +408,9 @@ class bc(object):
                 message += i
 
         print("The message received from " + rt_num_tx + " is " + message)
-        self.wait_for_write_perm()
+        self.wait_until_rt_finishes()
         return ("The transfer from RT " + rt_num_tx + " to BC has terminated")
 
-    ## TODO: Fix once RT-RT timing is finished
     # RT -> RT
     ## Remote Terminal to Remote Terminal Transfer
     ## The Bus Controller sends out one receive command word 
@@ -421,11 +420,8 @@ class bc(object):
     ## The receiving Terminal then sends its Status word.
     def RT_RT_Transfer(self, rt_num_rx, rt_num_tx, data):
         
-        # Creates an array of two characters that will later be turning into 16 bit data words
-        array = self.string_to_tokens()
-
-        # Creates a message count to pass to the create command word function to tell the RT how many words to send
-        msg_count = len(array)
+        # Calculate number of data words that will be transferred
+        msg_count = ceil(len(data))
 
         # Create and issue the command word for the receiving RT
         tmp_msg_rx    =  self.create_command_word(rt_num_rx, self.rx, self.zero, msg_count)
@@ -449,7 +445,6 @@ class bc(object):
             self.error = 1
             return
 
-         
         # Create and issue the status word from the receiving RT
         rt_status_rx  = self.read_message()
         sleep(self.frequency)
@@ -501,8 +496,7 @@ class bc(object):
                 if rt.num.uint == rt_num:
                     self.rt_list.remove(rt)
             return
-                                     
-            
+                   
 
     # Mode Command w/ Data Word Transmit
     # The bus controller shall issue a transmit command word to the RT using a 
@@ -517,6 +511,7 @@ class bc(object):
             # secs). If one isn't returned, assume the RT is dead.
             sleep(0.25)
             time_start = time()
+            no_response = True
             while(time() - time_start < 2):
                 # Get current data of bus
                 current_data = self.read_message()
@@ -524,17 +519,20 @@ class bc(object):
                 if (current_data[0:3] == BitArray(uint=7, length=3)):
                     # If current message is from the RT we were expecting
                     # check parity bit
+                    no_response = False
                     if (current_data[3:8] == BitArray(uint=rt_num, length=5)):
                         if (BitArray(uint=(current_data.count(1)) % 2 == 0, length=1) and current_data.bin[-1]):
                             return
                         else:
                             print("Parity Bit Error!")
                             return
+                        
             # Timed out, so put the RT on the dead list and return execution
-            for rt in self.rt_list:
-                if rt.num.uint == rt_num:
-                    self.rt_list.remove(rt)
-            return
+            if no_response:
+                for rt in self.rt_list:
+                    if rt.num.uint == rt_num:
+                        self.rt_list.remove(rt)
+                return
 
             # The BC at this point has successively received a status word from the RT and should now check for
             # data words to be received.
@@ -547,7 +545,9 @@ class bc(object):
                     
             if (len(self.received_data) != msg_count):
                 print("Not all messages were received.")
+            return
             
+
     # Mode Command w/ Data Word Receive
     # The bus controller shall issue a receive command word to the RT using a 
     # mode code specified in Table3-1. The mode code will be (9, 16-21) The RT shall, after a command 
@@ -558,6 +558,7 @@ class bc(object):
         # Over two seconds, look for a status word from the RT (each .25
         # secs). If one isn't returned, assume the RT is dead.
         sleep(0.25)
+        no_response = True
         time_start = time()
         while(time() - time_start < 2):
             # Get current data of bus
@@ -567,6 +568,7 @@ class bc(object):
                 # If current message is from the RT we were expecting
                 # check parity bit
                 if (current_data[3:8] == BitArray(uint=rt_num, length=5)):
+                    no_response = False
                     if (BitArray(uint=(current_data.count(1)) % 2 == 0, length=1) and current_data.bin[-1]):
                         return
                     else:
@@ -574,6 +576,7 @@ class bc(object):
                         return
             
             # Timed out, so put the RT on the dead list and return execution
+        if no_response:
             for rt in self.rt_list:
                 
                 if rt.num.uint == rt_num:
@@ -581,10 +584,10 @@ class bc(object):
                 return
 
             # The BC should write all messages to the RT
-            for msg in msg_count:
+        for _ in range(msg_count):
                 
-                tmp_msg = self.create_data_word(data)
-                self.databus.write_BitArray(tmp_msg)
+            tmp_msg = self.create_data_word(data)
+            self.databus.write_BitArray(tmp_msg)
    
 
     ## A BC should first send a RT a Command Word telling it to receive, next Data Words will be sent by the BC containing BC's public key,

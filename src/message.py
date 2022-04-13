@@ -114,85 +114,85 @@ class command_word(object):
 class data_word(object):
 
     # Initialize each message field, turn the data to binary, and pack the bits.
-    def create_data_word(self, dat):
-        self.msg_type = BitArray(uint=6,        length=3)   # 3 bit field
+    def create_data_word(dat):
+        msg_type = BitArray(uint=6,        length=3)   # 3 bit field
         #self.data     = BitArray(uint=dat,     length=16)  # 16 bit field
         
     # Create the "data" part of the message.
-        self.msg = BitArray(dat)
+        msg = BitArray(dat)
 
     # Calculate parity of data and append it to the message.
-        self.msg.append(BitArray(uint=((self.msg.count(1)) % 2 == 0), length=1))
+        msg.append(BitArray(uint=((msg.count(1)) % 2 == 0), length=1))
         
     # Once parity is calculated, prepend the msg type.
-        self.msg.prepend(self.msg_type)
-        return self.msg.bin
+        msg.prepend(msg_type)
+        return msg.bin
         
 class status_word(object):
 
-    def create_status_word_with_data(self, data):    # data is a 
-        self.msg_type   = BitArray(uint=7, length=3) # 3 bit field
-        self.rt_addr    = data.bin[0:5]              # Five bit field
-        self.msg_err    = data.bin[5]                # One bit flag
-        self.instrum    = data.bin[6]                # One bit flag
-        self.serv_req   = data.bin[7]                # One bit flag
-        self.reserved   = data.bin[8:11]             # Three bit flag
-        self.broad_comm = data.bin[11]               # One bit flag
-        self.busy       = data.bin[12]               # One bit flag
-        self.sub_flag   = data.bin[13]               # One bit flag
-        self.dyn_bc     = data.bin[14]               # One bit flag
-        self.term_flag  = data.bin[15]               # One bit flag
+    def create_status_word_with_data(data):    # data is a 
+        msg_type   = BitArray(uint=7, length=3) # 3 bit field
+        rt_addr    = data.bin[0:5]              # Five bit field
+        msg_err    = data.bin[5]                # One bit flag
+        instrum    = data.bin[6]                # One bit flag
+        serv_req   = data.bin[7]                # One bit flag
+        reserved   = data.bin[8:11]             # Three bit flag
+        broad_comm = data.bin[11]               # One bit flag
+        busy       = data.bin[12]               # One bit flag
+        sub_flag   = data.bin[13]               # One bit flag
+        dyn_bc     = data.bin[14]               # One bit flag
+        term_flag  = data.bin[15]               # One bit flag
 
         # Create the "data" part of the message.
-        self.msg = BitArray(data)
+        msg = BitArray(data)
 
         # Calculate parity of data and append it to the message.
-        self.msg.append(BitArray(uint=((self.msg.count(1)) % 2 == 0), length=1))
+        msg.append(BitArray(uint=((msg.count(1)) % 2 == 0), length=1))
 
         # Once parity is calculated, prepend the msg type.
-        self.msg.prepend(self.msg_type)
+        msg.prepend(msg_type)
 
         # Print full message in binary without <0b> at the beginning.
-        return self.msg.bin
+        return msg.bin
 
 
-    def create_status_word(self, rt_addr, msg_err, instrum, serv_req, reserved, broad_comm, busy, sub_flag, dyn_bc, term_flag):
+    def create_status_word(rt_addr, msg_err, instrum, serv_req, reserved, broad_comm, busy, sub_flag, dyn_bc, term_flag):
 
         # Initialize each message field, turn the data to binary, and pack the bits.
-        self.msg_type   = BitArray(uint=7,          length=3)  # 3 bit field
-        self.rt_addr    = BitArray(uint=rt_addr,    length=5)  # 5 bit field
-        self.msg_err    = BitArray(uint=msg_err,    length=1)  # 1 bit flag
-        self.instrum    = BitArray(uint=instrum,    length=1)  # 1 bit flag
-        self.serv_req   = BitArray(uint=serv_req,   length=1)  # 1 bit flag
-        self.reserved   = BitArray(uint=reserved,   length=3)  # 3 bit field
-        self.broad_comm = BitArray(uint=broad_comm, length=1)  # 1 bit flag
-        self.busy       = BitArray(uint=busy,       length=1)  # 1 bit flag
-        self.sub_flag   = BitArray(uint=sub_flag,   length=1)  # 1 bit flag
-        self.dyn_bc     = BitArray(uint=dyn_bc,     length=1)  # 1 bit flag
-        self.term_flag  = BitArray(uint=term_flag,  length=1)  # 1 bit flag
+        msg_type   = BitArray(uint=7,          length=3)  # 3 bit field
+        rt_addr    = BitArray(uint=rt_addr,    length=5)  # 5 bit field
+        msg_err    = BitArray(uint=msg_err,    length=1)  # 1 bit flag
+        instrum    = BitArray(uint=instrum,    length=1)  # 1 bit flag
+        serv_req   = BitArray(uint=serv_req,   length=1)  # 1 bit flag
+        reserved   = BitArray(uint=reserved,   length=3)  # 3 bit field
+        broad_comm = BitArray(uint=broad_comm, length=1)  # 1 bit flag
+        busy       = BitArray(uint=busy,       length=1)  # 1 bit flag
+        sub_flag   = BitArray(uint=sub_flag,   length=1)  # 1 bit flag
+        dyn_bc     = BitArray(uint=dyn_bc,     length=1)  # 1 bit flag
+        term_flag  = BitArray(uint=term_flag,  length=1)  # 1 bit flag
         
         # Create the "data" part of the message.
-        self.msg = BitArray(self.rt_addr)
-        self.msg.append(self.msg_err)
-        self.msg.append(self.instrum)
-        self.msg.append(self.serv_req)
-        self.msg.append(self.reserved)
-        self.msg.append(self.broad_comm)
-        self.msg.append(self.busy)
-        self.msg.append(self.sub_flag)
-        self.msg.append(self.dyn_bc)
-        self.msg.append(self.term_flag)
+        msg = BitArray(rt_addr)
+        msg.append(msg_err)
+        msg.append(instrum)
+        msg.append(serv_req)
+        msg.append(reserved)
+        msg.append(broad_comm)
+        msg.append(busy)
+        msg.append(sub_flag)
+        msg.append(dyn_bc)
+        msg.append(term_flag)
 
         # Calculate parity of data and append it to the message.
-        self.msg.append(BitArray(uint=((self.msg.count(1)) % 2 == 0), length=1))
+        msg.append(BitArray(uint=((msg.count(1)) % 2 == 0), length=1))
         
         # Once parity is calculated, prepend the msg type.
-        self.msg.prepend(self.msg_type)
+        msg.prepend(msg_type)
 
         # Print full message in binary without <0b> at the beginning.
         #print(self.msg.bin)
 
-        return self.msg.bin
+        return msg.bin
 
 
 """Sample code to turn string into binary (helpful when taking in string)

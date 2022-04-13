@@ -39,8 +39,10 @@ class rt(object):
         self.dwords_stored      = ""      # Stores a string of data words as they come in, eventually being output to the terminal.
 
         # Flags for handling execution of message transfers
-        self.read_permission    = True    # Flag which keeps track of if the RT is O.K. to read the data on the bus
-        self.write_permission   = 0       # Count indicating how many data words this RT has permission to write to the bus
+        self.num_reads          = 0       # Count indicating how many data words this RT has to read from the bus in a given transfer
+        self.num_writes         = 0       # Count indicating how many data words this RT has permission to write to the bus in a given transfer
+        self.reading            = False   # Bool indicating if the RT is reading from the databus
+        self.writing            = False   # Bool indicating if the RT is writing to the databus
 
         self.public_key         = None      # Initialized to none type because it is initialized when a function is called
         self.private_key        = None      # Initialized to none type because it is initialized when a function is called
@@ -49,7 +51,7 @@ class rt(object):
 
         self.frequency          = 1       # Default tie to sleep between events
 
-        self.BC_public_key = None
+        self.BC_public_key      = None
 
         # For Timer functions, create a variable to check if the RT object still exists before looping execution
         self.exists = "Yes!"
@@ -71,10 +73,14 @@ class rt(object):
     # Event Handler
     def event_handler(self):
         if len(self.events > 0):
-            
-            # Remove leftmost (oldest) item in events deque and put it in temp var
+            # Grab event from event list and create array of data
             event = self.events.popleft()
-            
+            data = self.string_to_tokens(event[6])
+            bit_string_list = list()
+            for strn in data:
+                bs = Bits('0b'+(''.join(format(i,'08b') for i in bytearray(strn, encoding='utf-8'))))
+                bit_string_list.append(bs)
+
             # If event is supposed to repeat, do this
             if (int(event[2]) == 1):
                 # Decrement the num occurences if num occurences > 0 and not inf (-1), put back on right of events list 
@@ -82,26 +88,42 @@ class rt(object):
                     event[4] = str(int(event[4]) - 1)
                     self.events.append(event)
                 
-                elif (int(event[4]) == -1):
+                elif (int(event[4]) <= -1):
                     self.events.append(event)
             
-            # RT -> BC
-            if (event[0][:2] == "RT" and event[1][:2] == "BC"):
-                print("RT to BC transfer!")
-                # Do the RT->BC transfer
-                self.RT_BC_Transfer(int(event[1][-2:]), event[6])
-                return
+            # Wait until bus is not in use before continuing (checking each 5 ms)
+            while (self.databus.is_in_use == 1):
+                sleep(0.005)
 
-            # RT -> RT
-            elif (event[0][:2] == "RT" and event[1][:2] == "RT"):
-                print("RT to RT transfer!")
-                # Do the RT->RT transfer
-                self.RT_RT_Transfer(int(event[1][-2:]), int(event[0][-2:]), event[6])
-                return
+            ## TODO: Finish these
+            
+            # Transmit some data
+            if self.rx_tx_mode == '1':
+                #self.transmit(data)
+                for bs in bit_string_list:
+                    self.wait_for_write_perm()
+                    # need to create dataword lol one sec
+                    data_msg = data_word.create_data_word(bs)
+                    self.databus.write_BitArray(data_msg)
+                    self.writing = False
+                    self.databus.writing = True
+                    self.databus.reading = True
+                pass
+                
+                
+            # Receive some data
+            elif self.rx_tx_mode == '0':
+                cumulative_data = []
+                for _ in range(self.num_reads) :
+                    self.wait_for_read_perm()
+                    tmp = self.databus.read_BitArray()
+                    cumulative_data.append(chr(int(tmp.bin[3:11],2)) + chr(int(tmp.bin[11:19],2)))
+                    sleep(self.frequency)
+                print("Complete Message is: \"" + "".join(cumulative_data) + "\"")
 
             # Otherwise, undefined transfer
             else: 
-                print("Event undefined transfer! ", event[0], "->", event[1])
+                print("ERROR: Event undefined transfer! ", event[0], "->", event[1])
                 return
             
         else:
@@ -161,7 +183,7 @@ class rt(object):
     def write_message_timer(self):
         '''At the end of a time interval, this function is called and if the terminal has a need and the permissions
         to write to the bus, it will do so.'''
-        if((self.write_permission == 0) or (len(self.events) == 0)): # If there is no permission to write anything or nothing to write, return immediately.
+        if((self.writing == False) or (len(self.events) == 0)): # If there is no permission to write anything or nothing to write, return immediately.
             return
         print("Writing a message to the bus!")
         #self.databus.write_BitArray(self.event_to_word(self.events.pop()))
@@ -169,18 +191,17 @@ class rt(object):
 
     # Fucntion to wait on write permissions to continue execution.
     def wait_for_write_perm(self):
-        while(not(self.write_permission)):
+        while(not(self.writing)):
             sleep(0.01)
-            pass
         return
 
     # Fucntion to wait on read permissions to continue execution.
     def wait_for_read_perm(self):
-        while(not(self.read_permission)):
+        while(not(self.reading)):
             sleep(0.01)
-            pass
         return
 
+    """
     # RT -> BC
     ## Remote Terminal to Bus Controller Transfer
     ## The Bus Controller sends one transmit command word to a Remote Terminal
@@ -213,6 +234,7 @@ class rt(object):
             self.issue_data_word(data_msg)
 
         return
+    """
 
     def process_mode_code(self, mode_code):
         if  (mode_code==BitArray(uint=0, length=5)):	# case 0:  Dynamic Bus Control | No Data Word Associated
@@ -286,7 +308,7 @@ class rt(object):
 
             data_word_list = []           
             
-            for x in range(4):
+            for _ in range(4):
 
                 data_word = self.read_message()
                 data_word_list.append(data_word.data)
@@ -296,7 +318,6 @@ class rt(object):
 
             # After all data words are received the RT should respond with a Status Word to acknowledge that the messages were received
             self.issue_status_word(sendable_status_word)
-
             return
 
         elif (mode_code==BitArray(uint=10, length=5)):   # case 10: Transmit Remote Terminal Public Key | 4 Data Words Associated
@@ -319,9 +340,6 @@ class rt(object):
                 public_key_dw       =      self.create_data_word(data_word)
                 self.write_message(public_key_dw)
                 sleep(self.frequency)
-
-            
-            
             return
           
         elif (mode_code==BitArray(uint=16, length=5)):	# case 16: Transmit Vector Word | Data Word Associated
@@ -350,7 +368,6 @@ class rt(object):
             
             #sendable_data_word = data_word()
             #sendable_data_word.create_data_word()
-            
             return
         
         elif (mode_code==BitArray(uint=20, length=5)):	# case 20: Selected Transmitter Shutdown |  Data Word Associated
@@ -374,17 +391,12 @@ class rt(object):
     # Main loop for listening to bus.
     def main(self):
         print("RT Main running!!!")
-            
-        ## TODO: Once logic is understood for each transfer type, 
-        # implement the if-else, and set up contextual decision making
-        # i.e., understand what to do with the next message
-
+        
         # Grabs first message from bus if bus not empty and not in use
         if not(self.databus.is_empty()):
             # Wait for databus to not be in use.
             while (self.databus.is_in_use()):
                 sleep(0.01)
-                pass
 
             tmp_msg = self.read_message()
                 
@@ -395,11 +407,17 @@ class rt(object):
                 self.last_command_word = tmp_msg
                 self.received_msgs.append(tmp_msg)
 
+                ## TODO: call the event handler
+
                 # Sets the tx/rx mode. 1 means transmit, 0 means receive
                 self.rx_tx_mode = tmp_msg.bin[8]
                 # If transmit set to 1
                 if self.rx_tx_mode == '1':
-                    pass
+                    self.transmit()
+
+                # Otherwise if transmit/receive set to 0
+                elif self.rx_tx_mode == "0":
+                    self.receive()
                 
                 # If the subadress mode is zero or thirty-one the remote terminal will look at the next field
                 # to see what the mode code is and take action accordingly
@@ -434,7 +452,6 @@ class rt(object):
                         # Send data words in time to be taken in by recipient
                         #TODO: Finish
                         # This maybe could be handled by queueing up messages for write_message_timer to send out
-                        pass
                         
                     # The RT will prepare to receive data words 
                     else:
@@ -460,19 +477,14 @@ class rt(object):
                             self.issue_status_word(status_word)
                             
             # The RT has received a broadcast message                
-            elif (tmp_msg.rt_addr.bin == BitArray(uint=31, length=5).bin):
-                #TODO: Watch for broadcasted status words w/ non-zero 
-                #      reserved bits as a form of synchronizing keys 
-                pass
+            #elif (tmp_msg.rt_addr.bin == BitArray(uint=31, length=5).bin):
 
             # We have encountered a data-word that is not a command word
-            else: 
-                pass
+            #else: 
 
         # Databus is either empty, or we are done getting messages so wait for thread timer to be called again
         else:
-            pass
-        pass
+            print("There was nothing on the bus to proccess!")
     # End of main()
     
     def queue_message(self, command):
