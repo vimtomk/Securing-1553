@@ -106,8 +106,9 @@ class rt(object):
                     data_msg = data_word.create_data_word(bs)
                     self.databus.write_BitArray(data_msg)
                     self.writing = False
-                    self.databus.writing = True
-                    self.databus.reading = True
+                    ## TODO: REMOVE THESE AND REPLACE WITH CHECKING ON THE BC SIDE
+                    #self.databus.writing = True
+                    #self.databus.reading = True
                 pass
                 
                 
@@ -128,6 +129,70 @@ class rt(object):
             
         else:
             return
+
+    # Function to handle receiving data
+    def receive(self):
+        # This function handles the logic for when the RT gets a command to RX
+        # If the subadress mode is zero or thirty-one the remote terminal will look at the next field
+        # to see what the mode code is and take action accordingly
+        #self.reading = True
+        #tmp_msg = self.databus.read_BitArray()
+
+        tmp_msg = self.last_command_word
+
+        if (tmp_msg.bin[9:14] == BitArray(uint=0, length=5) or tmp_msg.bin[9:14] == BitArray(uint=31, length=5)):
+        
+            self.process_mode_code(tmp_msg.bin[9:14])
+            
+        # The mode code field will else represent the number of words the RT needs to transmit or receive
+        else:
+            
+            # Creates a message count of how many words to either transmit or receive
+            msg_count = int(tmp_msg.bin[14:19],2)
+            
+            # Handle receiving the messages   
+            data_word_list = []
+            for _ in range(0, msg_count):
+                # Wait for read permission
+                self.wait_for_read_perm()
+                # Reads the data word off of the data bus
+                msg = self.read_message()
+                char1 = chr(int(msg[0:8], 2))
+                char2 = chr(int(msg[8:], 2))
+                data_word_list.append(char1 + char2)
+                print("RT#" +  self.num + " has received a data word with \"" + char1 + char2 + "\"")
+                self.reading = False
+                
+            # Wait for write permission
+            self.wait_for_write_perm()
+            # Send status word acknowledging the reception of all messages
+            #status_word = self.create_status_word()
+            #self.issue_status_word(status_word)
+            # Output complete message
+            print("RT#" +  str(self.num.int) + "'s complete received message is : \"" + ("".join(data_word_list)) + "\"")
+        return
+    
+    # Function to handle transmitting data
+    def transmit(self):
+
+        ## COPIED BLOCK ##
+        # Looks at the event list to see what message to send 
+        sending_msg = self.events.pop()
+        char_pairs = self.string_to_tokens(sending_msg[6])
+                
+        # Create data words
+        data_send_list = []
+        for char_pair in char_pairs:
+            
+            complete_data_word = "0b110" + bin(ord(char_pair[0]))[2:] + bin(ord(char_pair[1]))[2:]
+            if(complete_data_word.count(1) % 2 == 0):
+                complete_data_word = complete_data_word + "1"
+            else:
+                complete_data_word = complete_data_word + "0"
+            complete_data_word = BitArray(complete_data_word)
+            data_send_list.append(complete_data_word)
+        # Send data words in time to be taken in by recipient
+        ## COPIED BLOCK ##
 
     # Read message from bus (20 bits)
     def read_message(self):
@@ -419,62 +484,6 @@ class rt(object):
                 elif self.rx_tx_mode == "0":
                     self.receive()
                 
-                # If the subadress mode is zero or thirty-one the remote terminal will look at the next field
-                # to see what the mode code is and take action accordingly
-                if (tmp_msg.bin[9:14] == BitArray(uint=0, length=5) or tmp_msg.bin[9:14] == BitArray(uint=31, length=5)):
-                
-                    self.process_mode_code(tmp_msg.bin[9:14])
-                    
-                # The mode code field will else represent the number of words the RT needs to transmit or receive
-                else:   
-                    
-                    # Creates a message count of how many words to either transmit or receive
-                    msg_count = tmp_msg.bin[14:19]
-                     
-                    # The RT will create data words to transmit 
-                    if self.rx_tx_mode == 1:
-                        
-                        # Looks at the event list to see what message to send 
-                        sending_msg = self.events.pop()
-                        char_pairs = self.string_to_tokens(sending_msg[6])
-                        
-                        # Create data words
-                        data_send_list = []
-                        for char_pair in char_pairs:
-                            complete_data_word = "0b110" + bin(ord(char_pair[0]))[2:] + bin(ord(char_pair[1]))[2:]
-                            if(complete_data_word.count(1) % 2 == 0):
-                                complete_data_word = complete_data_word + "1"
-                            else:
-                                complete_data_word = complete_data_word + "0"
-                            complete_data_word = BitArray(complete_data_word)
-                            data_send_list.append(complete_data_word)
-
-                        # Send data words in time to be taken in by recipient
-                        #TODO: Finish
-                        # This maybe could be handled by queueing up messages for write_message_timer to send out
-                        
-                    # The RT will prepare to receive data words 
-                    else:
-                        
-                        data_word_list = []
-
-                        for msg in range(0, msg_count):
-                            
-                            # Reads the data word off of the data bus
-                            msg = self.read_message()
-                            char1 = chr(int(msg[0:8], 2))
-                            char2 = chr(int(msg[8:], 2))
-                            data_word_list.append(char1 + char2)
-                            sleep(self.frequency)
-                            
-                            for ch in data_word_list:
-                                message += ch
-
-                            print("RT#" +  self.num + " has received data word with '" + message + "'")
-                        
-                            # Send status word back to BC
-                            status_word = self.create_status_word()
-                            self.issue_status_word(status_word)
                             
             # The RT has received a broadcast message                
             #elif (tmp_msg.rt_addr.bin == BitArray(uint=31, length=5).bin):

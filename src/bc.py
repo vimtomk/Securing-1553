@@ -10,6 +10,7 @@ import time, random, threading, secrets
 from encryptor import DHKE
 from collections import deque
 from math import ceil
+from threading import Timer
 
 class bc(object):
     # BC Constructor
@@ -18,7 +19,7 @@ class bc(object):
         # Initialize BC variables
         self.num            = BitArray(uint=terminal, length=5)     # Value indicating the terminal the bus controller is operating from
         self.received_data  = list()    # A list of the received messages used in context to keep track of data needed for received status words
-        self.rt_list        = rt_array  # Bus controller's known RTs, pass "rts" in as a list of values from 0-30 (31 reserved for broadcast)
+        self.rt_list        = rt_array  # Bus controller's known RTs, pass "rt_array" in as a list references to the RT objects, if known before initialization
         self.error          = 0         # Flag to indicate if there is a communications error
         self.init_bus       = 0         # Flag to indicate if bus has been initialised
         self.dead_list      = list()    # List the discarded RTs marked by an alive check
@@ -68,21 +69,6 @@ class bc(object):
     def return_terminal_num(self):
         return self.num
 
-    # Sends command word to the bus
-    def issue_command_word(self, sendable_command_word):
-        self.databus.write_BitArray(sendable_command_word)
-        return
-
-    # Sends status word to the bus
-    def issue_status_word(self, sendable_status_word):
-        self.databus.write_BitArray(sendable_status_word)
-        return
-
-    # Sends data word to the bus
-    def issue_data_word(self, sendable_data_word):
-        self.databus.write_BitArray(sendable_data_word)
-        return
-
     # Validates that a received status word has no errors
     def validate_status_word(self, status_word):
         self.error = 0
@@ -123,46 +109,6 @@ class bc(object):
     def create_data_word(self, data):
         msg_out = data_word.create_data_word(data)
         return msg_out
-
-    """
-    # For each rt on the bus, create a command word one at a time and wait for response (status check)
-    def check_rts(self):
-        
-        for rt in self.rt_list:
-            # The two at the end ensures we are using mode code 2 which means the BC wants the RT to send a status word
-            self.create_command_word(rt, self.tx, self.zero, 2)
-            # Now wait a second and listen for message on bus
-            sleep(self.frequency)
-            # Wait no longer than 10 seconds
-            max_wait   = int(1)
-            start_time = time.time()
-            while (time.time() - start_time) < max_wait:
-                # Get most first message on the bus (front of queue)
-                tmp_msg = self.read_message()
-                
-                # Check if message is type Status Word
-                if (int(tmp_msg.msg.bin[0:3], base=2) == 7):
-                    # Check if status word from correct RT
-                    if (int(tmp_msg.msg.bin[3:8], base=2) == rt):
-                        # If no parity error, then process message
-                        if(tmp_msg.count(1) % 2 == 0):
-                            # Parity Error
-                            print("Parity error!")
-                            pass
-                        # If there is a parity error, may want RT to resend
-                        else:
-                            # No Parity Error
-                            pass
-
-                # If message is not status word, wait a min and continue
-                else:
-                    sleep(0.001)
-                    continue
-            # insert RT number into dead_list if there is no reply
-            else:
-                self.rt_list.remove(rt)
-        return
-    """
     
     # Read message from bus (20 bits)
     def read_message(self):
@@ -239,10 +185,17 @@ class bc(object):
         return
 
     # Function to wait for an RT to stop reading/writing before continuing execution
-    def wait_until_rt_finishes(self, rt):
-        while(rt.reading or rt.writing): # Checks RT's reading and writing flags
+    def wait_until_rt_finishes(self, rt_num):
+        for rt in self.rt_list:
+            if rt.num.int == rt_num:
+                indx = self.rt_list.index(rt)
+                break
+            else:
+                print("RT " + str(rt_num) + " not found!")
+                return
+
+        while(self.rt_list[indx].reading or self.rt_list[indx].writing): # Checks RT's reading and writing flags
             sleep(0.01)
-            pass
         return
 
     # Function to wait on read permissions to continue execution.
@@ -252,6 +205,29 @@ class bc(object):
             pass
         return
 
+    # Funciton to set the write permissions of specified RT
+    def set_rt_write_perm(self, rt_num, boolean):
+        for rt in self.rt_list:
+            if rt.num.int == rt_num:
+                indx = self.rt_list.index(rt)
+                self.rt_list[indx].reading = boolean
+
+            else:
+                print("RT " + str(rt_num) + " not found!")
+                return
+
+    # Function to set the read permissions of the specified RT
+    def set_rt_read_perm(self, rt_num, boolean):
+        for rt in self.rt_list:
+            if rt.num.int == rt_num:
+                indx = self.rt_list.index(rt)
+                self.rt_list[indx].writing = boolean
+
+            else:
+                print("RT " + str(rt_num) + " not found!")
+                return
+
+                
     # BC Destructor
     def __del__(self):
         self.exists = "No."
@@ -331,23 +307,36 @@ class bc(object):
         # Create list of bit strings
         for strn in array:
             bs  = Bits('0b'+(''.join(format(i, '08b') for i in bytearray(strn, encoding='utf-8'))))
-            bit_string_list.append(bs)     
+            bit_string_list.append(bs)
 
         # Create and issue the command word for the receiving RT
-        tmp_msg_rx     =    self.create_command_word(rt_num_rx, self.rx, self.zero, msg_count)
-        self.issue_command_word(tmp_msg_rx)
-        (self.rt_list[self.rt_list.index(rt_num_rx)]).reading = True
+        tmp_msg_rx     =    self.create_command_word(rt_num_rx, self.rx.int, self.zero.int, msg_count)
+        self.write_message(tmp_msg_rx)
+        self.set_rt_read_perm(rt_num_rx, bool(True))
+        
         self.writing = False
 
         # Set the designated rt's write permission to True and wait to be given back write perms
-        (self.rt_list[self.rt_list.index(rt_num_rx)]).writing = True
-        self.wait_until_rt_finishes(self.rt_list[self.rt_list.index(rt_num_rx)])
+        self.set_rt_write_perm(rt_num_rx, bool(True))
+        sleep(.5) #self.wait_until_rt_finishes(self.rt_list[indx])
         
+        for rt in self.rt_list:
+            if rt.num.int == rt_num_rx:
+                indx = self.rt_list.index(rt)
+                break
+            else:
+                print("RT " + str(rt_num_rx) + " not found!")
+                return
+        Timer(0,self.rt_list[indx].receive()).start()
         # Create and issue 1 to 32 16-bit data words
         for bs in bit_string_list:
-            sleep(self.frequency)
+            sleep(0.1)
             data_msg     =    self.create_data_word(bs)
-            self.issue_data_word(data_msg)
+            self.databus.write_BitArray(BitArray("0b" + data_msg))
+            # Set RT read permission to True
+            self.set_rt_read_perm(rt_num_rx, bool(True))
+            self.wait_until_rt_finishes(self.rt_list[indx])
+
         
         # Create and issue the status word from the receiving RT
         rt_status_word      =    self.read_message()
@@ -376,18 +365,18 @@ class bc(object):
         msg_count = ceil(len(data))
         
         # Create and issue the command word for the transmitting RT
-        tmp_msg_tx = self.create_command_word(rt_num_tx, self.tx, self.zero, msg_count)
-        self.issue_command_word(tmp_msg_tx)
+        tmp_msg_tx = self.create_command_word(rt_num_tx, self.tx.int, self.zero.int, msg_count)
+        self.write_message(tmp_msg_tx)
         self.writing = False
-        (self.rt_list[self.rt_list.index(rt_num_tx)]).writing = True
-        
+        self.set_rt_write_perm(rt_num_tx, True)
+
         # Waits for a status word to be received from the transmitting RT and validate it
         
         rt_status_word = self.read_message()
         sleep(self.frequency)
         
         if (self.validate_status_word(rt_status_word) == 0):
-            print("RT " + rt_num_tx + " is sending messages to BC")
+            print("RT " + str(rt_num_tx) + " is sending messages to BC")
             self.error = 0
         else:
             print("***STATUS MESSAGE ERROR***")
@@ -407,9 +396,9 @@ class bc(object):
         for i in data_word_list:
                 message += i
 
-        print("The message received from " + rt_num_tx + " is " + message)
+        print("The message received from " + str(rt_num_tx)+ " is " + message)
         self.wait_until_rt_finishes()
-        return ("The transfer from RT " + rt_num_tx + " to BC has terminated")
+        return ("The transfer from RT " + str(rt_num_tx) + " to BC has terminated")
 
     # RT -> RT
     ## Remote Terminal to Remote Terminal Transfer
@@ -425,12 +414,12 @@ class bc(object):
 
         # Create and issue the command word for the receiving RT
         tmp_msg_rx    =  self.create_command_word(rt_num_rx, self.rx, self.zero, msg_count)
-        self.issue_command_word(tmp_msg_rx)
+        self.write_message(tmp_msg_rx)
         sleep(self.frequency)
         
         # Create and issue the command word for the transmitting RT
         tmp_msg_tx    =  self.create_command_word(rt_num_tx, self.tx, self.zero, msg_count)
-        self.issue_command_word(tmp_msg_tx)
+        self.write_message(tmp_msg_tx)
         sleep(self.frequency)
         
         # Wait for transmitting RT to send a status word back and validate the status word
@@ -473,6 +462,7 @@ class bc(object):
             sleep(0.25)
             
             #self.read_message_timer(1)
+            timed_out = True
             time_start = time()
             
             while(time() - time_start < 2):
@@ -482,6 +472,7 @@ class bc(object):
                 
                 # If current message a status word:
                 if (current_data[0:3] == BitArray(uint=7, length=3)):
+                    timed_out = False
                     # If current message is from the RT we were expecting 
                     # check parity bit
                     if (current_data[3:8] == BitArray(uint=rt_num, length=5)):
@@ -492,9 +483,10 @@ class bc(object):
                             return
 
             # Timed out, so put the RT on the dead list and return execution
-            for rt in self.rt_list:
-                if rt.num.uint == rt_num:
-                    self.rt_list.remove(rt)
+            if timed_out:
+                for rt in self.rt_list:
+                    if rt.num.uint == rt_num:
+                        self.rt_list.remove(rt)
             return
                    
 
@@ -510,8 +502,8 @@ class bc(object):
             # Over two seconds, look for a status word from the RT (each .25
             # secs). If one isn't returned, assume the RT is dead.
             sleep(0.25)
-            time_start = time()
             no_response = True
+            time_start = time()
             while(time() - time_start < 2):
                 # Get current data of bus
                 current_data = self.read_message()
@@ -649,7 +641,7 @@ class bc(object):
             
 
             # This loop grabs each data word and appends them to an array
-            for x in range(4):
+            for _ in range(4):
                 rt_public_key_data   =  self.read_message()
                 data_word_list.append(rt_public_key_data[4:])
 
@@ -661,7 +653,7 @@ class bc(object):
 
             return
     
-    def string_to_tokens(in_string):
+    def string_to_tokens(self, in_string):
         '''Takes in a string and returns a list of 2-character pairs from that string.
         If the string's length is not divisible by 2, the final character is accompanied by a space.'''
         out_tokens = []

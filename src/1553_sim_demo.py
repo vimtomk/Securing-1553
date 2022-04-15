@@ -6,6 +6,7 @@ from bus import bus
 from bc import bc
 from rt import rt
 from bitstring import BitArray
+import threading
 
 print("Starting the MIL-STD-1553 Databus, Python Simulation Demonstration.")
 print("Order of simulation demonstration is...\nBC -> RT Transfer\nRT -> BC Transfer\nRT -> RT Transfer")
@@ -22,15 +23,26 @@ sleep(2)
 print("Initializing data bus...")
 databus = bus()
 sleep(.5)
+
 # Start BC, RT
 print("Initializing Bus Controller...")
 bc_p1 = bc(0)
 sleep(.5)
+
 print("Initializing Remote Terminal...")
 rt_p1 = rt(1)
 sleep(.5)
 
 ##TODO: Implement a demonstration of the BC to RT transfer
+# Start BC, RT
+print("Initializing Bus Controller...")
+bc_p1 = bc(0, rt_array=[rt_p1])
+
+threading.Timer(1, bc_p1.main()).start()
+threading.Timer(1, rt_p1.main()).start()
+
+bc_p1.BC_RT_Transfer(rt_p1.num.int, "Hi")
+
 
 # Shut down RTs, BC
 print("Shutting down the Remote Terminal...")
@@ -113,3 +125,7 @@ sleep(.5)
 print("Shutting down data bus...")
 databus.__del__()
 sleep(.5)
+
+
+
+## TODO: FINISH BC->RT TRANSFER
