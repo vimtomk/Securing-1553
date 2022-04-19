@@ -7,6 +7,8 @@ from bc import bc
 from rt import rt
 from bitstring import BitArray
 import threading
+import multiprocessing
+from multiprocessing import *
 
 print("Starting the MIL-STD-1553 Databus, Python Simulation Demonstration.")
 print("Order of simulation demonstration is...\nBC -> RT Transfer\nRT -> BC Transfer\nRT -> RT Transfer")
@@ -17,7 +19,7 @@ print("Order of simulation demonstration is...\nBC -> RT Transfer\nRT -> BC Tran
 print("\nPress enter to continue to the BC -> RT Transfer demonstration...")
 input()
 print("Starting BC -> RT Transfer...")
-sleep(2)
+sleep(1)
 
 # Start bus for this demo
 print("Initializing data bus...")
@@ -38,10 +40,21 @@ sleep(.5)
 print("Initializing Bus Controller...")
 bc_p1 = bc(0, rt_array=[rt_p1])
 
-threading.Timer(1, bc_p1.main()).start()
-threading.Timer(1, rt_p1.main()).start()
+print("Creating event BC->RT01 Transfer!")
+bc_p1.events.append(["BC","RT01","1","1","10","data","Hello"])
 
-bc_p1.BC_RT_Transfer(rt_p1.num.int, "Hi")
+print(bc_p1.events[0])
+
+print("Bus status, is empty? :" + str(rt_p1.databus.is_empty()))
+bc_cmd = bc_p1.create_command_word(rt_p1.num.int, bc_p1.rx.int, bc_p1.zero.int, 3)
+print("BC command being written is " + str(bc_cmd))
+bc_p1.write_message(bc_cmd)
+print("Bus status, is empty? :" + str(rt_p1.databus.is_empty()))
+print("RT command word being read is " + str(rt_p1.databus.read_BitArray()))
+rt_p1.receive()
+print("BC sending data to RT: \"hello\"")
+## TODO: Change out the rt_num with an RT object!
+bc_p1.BC_RT_Transfer(1, bc_p1.events[0][6])
 
 
 # Shut down RTs, BC
@@ -57,7 +70,7 @@ databus.__del__()
 sleep(.5)
 
 ################################################################################################################################
-
+'''
 # Demonstrate RT -> BC transfer
 print("\nPress enter to continue to the RT -> BC Transfer demonstration...")
 input()
@@ -129,3 +142,4 @@ sleep(.5)
 
 
 ## TODO: FINISH BC->RT TRANSFER
+'''

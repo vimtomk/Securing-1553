@@ -42,7 +42,7 @@ class bc(object):
         self.num_reads          = 0         # Count indicating how many data words the BC has to read from the bus in a given transfer
         self.num_writes         = 0         # Count indicating how many data words the BC has to write to the bus in a given transfer
         self.reading            = True      # Keeps track of if the BC is O.K. to read from the bus
-        self.writing            = False     # Keeps track of if the BC is the one who should be writing to the bus this cycle
+        self.writing            = True     # Keeps track of if the BC is the one who should be writing to the bus this cycle
 
         self.public_key         = None      # Initialized to none type because it is initialized when a function is called
         self.private_key        = None      # Initialized to none type because it is initialized when a function is called
@@ -54,12 +54,19 @@ class bc(object):
     def main(self):
 
         # Loop the execution of BC frequently, and let it orchestrate bus communications
-        if(self.exists == "Yes!"): 
-            
-            # If the BC has been removed, stop execution
-            # Handle events in the event list if the databus free to be use
-            if (not(self.databus.is_in_use()) and self.writing == True):
-                self.event_handler()
+        while(self.exists == "Yes!"):
+            print("BC main")
+            # While events list not empty, do things on the list 
+            while (self.events[0] != ""):
+                print("self.events true!")
+                # If the BC has been removed, stop execution
+                # Handle events in the event list if the databus free to be use
+                if (not(self.databus.is_in_use()) and self.writing == True):
+                    print("Calling event handler!")
+                    self.event_handler()
+                sleep(0.5)
+            print("BC no longer has transfers to handle!")
+            sleep(1)
 
         print("Exit main lol")
         return
@@ -312,13 +319,9 @@ class bc(object):
         # Create and issue the command word for the receiving RT
         tmp_msg_rx     =    self.create_command_word(rt_num_rx, self.rx.int, self.zero.int, msg_count)
         self.write_message(tmp_msg_rx)
-        self.set_rt_read_perm(rt_num_rx, bool(True))
+        #self.set_rt_read_perm(rt_num_rx, bool(True))
         
-        self.writing = False
-
-        # Set the designated rt's write permission to True and wait to be given back write perms
-        self.set_rt_write_perm(rt_num_rx, bool(True))
-        sleep(.5) #self.wait_until_rt_finishes(self.rt_list[indx])
+        #self.writing = False
         
         for rt in self.rt_list:
             if rt.num.int == rt_num_rx:
@@ -327,7 +330,11 @@ class bc(object):
             else:
                 print("RT " + str(rt_num_rx) + " not found!")
                 return
-        Timer(0,self.rt_list[indx].receive()).start()
+
+        command = self.rt_list[indx].databus.read_BitArray()
+        print("BC sent command word and that was " + str(command))
+                
+        #Timer(0,self.rt_list[indx].receive()).start()
         # Create and issue 1 to 32 16-bit data words
         for bs in bit_string_list:
             sleep(0.1)
@@ -337,6 +344,9 @@ class bc(object):
             self.set_rt_read_perm(rt_num_rx, bool(True))
             self.wait_until_rt_finishes(self.rt_list[indx])
 
+        # Set the designated rt's write permission to True and wait to be given back write perms
+        self.set_rt_write_perm(rt_num_rx, bool(True))
+        sleep(.5) #self.wait_until_rt_finishes(self.rt_list[indx])
         
         # Create and issue the status word from the receiving RT
         rt_status_word      =    self.read_message()

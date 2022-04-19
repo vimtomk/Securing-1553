@@ -135,11 +135,28 @@ class rt(object):
         # This function handles the logic for when the RT gets a command to RX
         # If the subadress mode is zero or thirty-one the remote terminal will look at the next field
         # to see what the mode code is and take action accordingly
-        #self.reading = True
-        #tmp_msg = self.databus.read_BitArray()
+        
+        tmp_msg = self.databus.read_BitArray()
 
-        tmp_msg = self.last_command_word
+        # If the message is a command word, do this
+        if (tmp_msg.bin[0:3] == "101"):
+            print("RT" + str(self.num.int) + " received command word: " + str(tmp_msg))
+            print("The RT is to receive " + str(int(tmp_msg.bin[14:19], base=2)) + " data words!")
+            #print("The RT is to receive " + str(tmp_msg.bin[14:19]) + " data words!")
+            #print(tmp_msg.bin)
+            return
 
+        # If the message is a status word, do this
+        elif (tmp_msg.bin[0:3] == "111"):
+            print("RT" + str(self.num) + " received status word: " + str(tmp_msg))
+            return
+        
+        # If the message is a data word, do this
+        elif (tmp_msg.bin[0:3] == "110"):
+            print("RT" + str(self.num) + "received data word: " + str(tmp_msg))
+            self.dwords_stored = self.dwords_stored + str(tmp_msg[3:19])
+            return
+        """
         if (tmp_msg.bin[9:14] == BitArray(uint=0, length=5) or tmp_msg.bin[9:14] == BitArray(uint=31, length=5)):
         
             self.process_mode_code(tmp_msg.bin[9:14])
@@ -150,10 +167,12 @@ class rt(object):
             # Creates a message count of how many words to either transmit or receive
             msg_count = int(tmp_msg.bin[14:19],2)
             
-            # Handle receiving the messages   
+            # Handle receiving the messages
             data_word_list = []
             for _ in range(0, msg_count):
                 # Wait for read permission
+                self.reading = False
+                print("Waiting for read perms...")
                 self.wait_for_read_perm()
                 # Reads the data word off of the data bus
                 msg = self.read_message()
@@ -164,6 +183,9 @@ class rt(object):
                 self.reading = False
                 
             # Wait for write permission
+            self.writing = False
+            print("My read perm is: " + str(self.reading) + "My write perm is: " + str(self.writing))
+            print("Waiting for write perms...")
             self.wait_for_write_perm()
             # Send status word acknowledging the reception of all messages
             #status_word = self.create_status_word()
@@ -171,6 +193,7 @@ class rt(object):
             # Output complete message
             print("RT#" +  str(self.num.int) + "'s complete received message is : \"" + ("".join(data_word_list)) + "\"")
         return
+        """
     
     # Function to handle transmitting data
     def transmit(self):
@@ -199,71 +222,16 @@ class rt(object):
         tmp = self.databus.read_BitArray()
         return tmp
 
-    def read_message_timer(self, delay):
-        '''Version of read_message that loops execution indefinitely and makes use of any important messages'''
-        #if(self.exists == "Yes!"):
-        #   threading.Timer(delay, self.read_message_timer, [delay]).start()
-        #   writeTime = float(delay) - (float(delay)/float(5)) # Time near the end of cycle where the terminal should write if it needs to
-        #   threading.Timer(writeTime, self.write_message_timer).start()
-        #else:
-        #   return
-        tmp = self.read_message()
-        #print(tmp) # Debug line
-        if(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 0): #and (self.dwords_expected > 0)): # If a data word 110, and we are expecting a data word
-            print("--RT " + str(self.num.int) + " says: Data Word received by RT.\nData is: " + chr(int(tmp.bin[3:11],2)) + chr(int(tmp.bin[11:19],2)))
-            if(self.dwords_expected != 0):
-                self.dwords_expected = self.dwords_expected - 1
-            else: # This terminal is not expecting data words. Stop reading.
-                return
-            self.dwords_stored.append(chr(int(tmp.bin[3:11],2)) + chr(int(tmp.bin[11:19],2)))
-            if(self.dwords_expected == 0):
-                print(self.dwords_stored)
-                self.dwords_stored = ""
-            if(tmp.count(1) % 2 == 0): # Failed parity check
-                self.error = 1
-            #else: # Passed parity check
-        elif((tmp.bin[3:8] == self.num.bin) or (tmp.bin[3:8] == '11111')): # If this is some other word meant for this terminal, or broadcast
-            if(tmp.bin[3:8] == '11111'):
-                print("--RT " + str(self.num.int) + " says: This message was a broadcast!")
-                pass
-            if(tmp[0] == 1 and tmp[1] == 0 and tmp[2] == 1): # If a command word 101
-                # Check to see if the command word contains a Mode Code or a Word Count
-                if((tmp[9:14] == "00000") or tmp[9:14] == "11111"): # If subaddress field is either of these, it is a mode code in the next 5-bit field
-                    print("Command Word received!\nMode code is: " + tmp.bin[14:19])
-                    # Send the mode code to the processor function
-                    self.process_mode_code(BitArray('0b' + tmp.bin[14:19]))
-                else: # This command word is permitting the terminal to send data words
-                    print("Command Word received!\nWord Count is: " + int("0b" + tmp.bin[14:19], 2))
-                    self.write_permission = int("0b" + tmp.bin[14:19], 2)
-            if(tmp.count(1) % 2 == 0): # Failed parity check
-                self.error = 1
-            #else: # Passed parity check
-            elif(tmp[0] == 1 and tmp[1] == 1 and tmp[2] == 1): # If a status word 111
-                print("--RT " + str(self.num.int) + " says: Status Word received!\nStatus was-\nError Flag: " + tmp.bin[8] + "\nService Request: " + tmp.bin[10] + "\nBusy bit: " + tmp.bin[15])
-                if(tmp.count(1) % 2 == 0): # Failed parity check
-                    self.error = 1
-            #else: # Passed parity check
-        #else: # This terminal was definitely not the intended recipient of the message
-
-    def write_message_timer(self):
-        '''At the end of a time interval, this function is called and if the terminal has a need and the permissions
-        to write to the bus, it will do so.'''
-        if((self.writing == False) or (len(self.events) == 0)): # If there is no permission to write anything or nothing to write, return immediately.
-            return
-        print("Writing a message to the bus!")
-        #self.databus.write_BitArray(self.event_to_word(self.events.pop()))
-        return
-
     # Fucntion to wait on write permissions to continue execution.
     def wait_for_write_perm(self):
         while(not(self.writing)):
-            sleep(0.01)
+            sleep(0.1)
         return
 
     # Fucntion to wait on read permissions to continue execution.
     def wait_for_read_perm(self):
         while(not(self.reading)):
-            sleep(0.01)
+            sleep(0.1)
         return
 
     """
@@ -456,12 +424,14 @@ class rt(object):
     # Main loop for listening to bus.
     def main(self):
         print("RT Main running!!!")
-        
+        print(type(self))
+        while(self.databus.is_empty()):
+            sleep(.1)
         # Grabs first message from bus if bus not empty and not in use
         if not(self.databus.is_empty()):
             # Wait for databus to not be in use.
             while (self.databus.is_in_use()):
-                sleep(0.01)
+                sleep(0.1)
 
             tmp_msg = self.read_message()
                 
@@ -494,6 +464,7 @@ class rt(object):
         # Databus is either empty, or we are done getting messages so wait for thread timer to be called again
         else:
             print("There was nothing on the bus to proccess!")
+            pass
     # End of main()
     
     def queue_message(self, command):
