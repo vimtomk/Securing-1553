@@ -6,6 +6,7 @@ from time import sleep
 from bitstring import Bits, BitArray
 import queue, threading, secrets
 from collections import deque
+import sys
 
 class rt(object):
     
@@ -153,8 +154,9 @@ class rt(object):
         
         # If the message is a data word, do this
         elif (tmp_msg.bin[0:3] == "110"):
-            print("RT" + str(self.num) + "received data word: " + str(tmp_msg))
-            self.dwords_stored = self.dwords_stored + str(tmp_msg[3:19])
+            print("RT" + str(self.num.int) + " received data word: " + str(tmp_msg))
+            #self.dwords_stored = self.dwords_stored + str(tmp_msg[3:19])
+            
             return
         """
         if (tmp_msg.bin[9:14] == BitArray(uint=0, length=5) or tmp_msg.bin[9:14] == BitArray(uint=31, length=5)):
@@ -194,7 +196,14 @@ class rt(object):
             print("RT#" +  str(self.num.int) + "'s complete received message is : \"" + ("".join(data_word_list)) + "\"")
         return
         """
-    
+
+    ##TODO: Finish this
+    # Funciton to return the received data words
+    def show_received_data(self):
+        #sys.stdout.write(" ".join(self.dwords_stored))
+        print("RT#" +  str(self.num.int) + "'s complete received message is : \"" + ("".join(self.dwords_stored)) + "\"")
+        return
+
     # Function to handle transmitting data
     def transmit(self):
 
@@ -234,40 +243,6 @@ class rt(object):
             sleep(0.1)
         return
 
-    """
-    # RT -> BC
-    ## Remote Terminal to Bus Controller Transfer
-    ## The Bus Controller sends one transmit command word to a Remote Terminal
-    ## The Remote Terminal then sends a single Status word
-    ## immediately followed by 1 to 32 words.
-    def RT_BC_Transfer(self, rt_num_tx, data):
-
-        # Creates an array of two chars that will later be turning into 16 bit data words
-        array = self.string_to_tokens(data)
-        msg_count = len(array)
-
-        # Listen for command word once BC sends it
-        self.wait_for_read_perm()
-        bc_command_word = self.read_message()
-
-        # Transmit status word
-        rt_status_word = self.create_status_word()
-        self.issue_status_word(rt_status_word)
-        sleep(self.frequency)
-
-        # Now send the data words
-        bit_string_list = []
-        for strn in array:
-            bs  = Bits('0b'+(''.join(format(i, '08b') for i in bytearray(strn, encoding='utf-8'))))
-            bit_string_list.append(bs)
-
-        for bs in bit_string_list:
-            sleep(self.frequency)
-            data_msg = self.create_data_word(bs)
-            self.issue_data_word(data_msg)
-
-        return
-    """
 
     def process_mode_code(self, mode_code):
         if  (mode_code==BitArray(uint=0, length=5)):	# case 0:  Dynamic Bus Control | No Data Word Associated

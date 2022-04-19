@@ -53,9 +53,10 @@ print("Bus status, is empty? :" + str(rt_p1.databus.is_empty()))
 print("RT command word being read is " + str(rt_p1.databus.read_BitArray()))
 rt_p1.receive()
 print("BC sending data to RT: \"hello\"")
-## TODO: Change out the rt_num with an RT object!
-bc_p1.BC_RT_Transfer(1, bc_p1.events[0][6])
+bc_p1.BC_RT_Transfer(rt_p1, bc_p1.events[0][6])
 
+print("RT received this data from BC:")
+rt_p1.show_received_data()
 
 # Shut down RTs, BC
 print("Shutting down the Remote Terminal...")

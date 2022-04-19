@@ -192,16 +192,9 @@ class bc(object):
         return
 
     # Function to wait for an RT to stop reading/writing before continuing execution
-    def wait_until_rt_finishes(self, rt_num):
-        for rt in self.rt_list:
-            if rt.num.int == rt_num:
-                indx = self.rt_list.index(rt)
-                break
-            else:
-                print("RT " + str(rt_num) + " not found!")
-                return
+    def wait_until_rt_finishes(self, rt_ptr):
 
-        while(self.rt_list[indx].reading or self.rt_list[indx].writing): # Checks RT's reading and writing flags
+        while(rt_ptr.reading or rt_ptr.writing): # Checks RT's reading and writing flags
             sleep(0.01)
         return
 
@@ -213,32 +206,21 @@ class bc(object):
         return
 
     # Funciton to set the write permissions of specified RT
-    def set_rt_write_perm(self, rt_num, boolean):
-        for rt in self.rt_list:
-            if rt.num.int == rt_num:
-                indx = self.rt_list.index(rt)
-                self.rt_list[indx].reading = boolean
-
-            else:
-                print("RT " + str(rt_num) + " not found!")
-                return
+    def set_rt_write_perm(self, rt_ptr, boolean):
+        rt_ptr.reading = boolean
+        return
 
     # Function to set the read permissions of the specified RT
-    def set_rt_read_perm(self, rt_num, boolean):
-        for rt in self.rt_list:
-            if rt.num.int == rt_num:
-                indx = self.rt_list.index(rt)
-                self.rt_list[indx].writing = boolean
-
-            else:
-                print("RT " + str(rt_num) + " not found!")
-                return
+    def set_rt_read_perm(self, rt_ptr, boolean):
+        rt_ptr.writing = boolean
+        return
 
                 
     # BC Destructor
     def __del__(self):
         self.exists = "No."
         del(self)
+
 
     # Event Handler
     def event_handler(self):
@@ -301,7 +283,7 @@ class bc(object):
     ## The Bus Controller sends one 16-bit receive command word
     ## immediately followed by 1 to 32 16-bit data words. 
     ## The selected Remote Terminal then sends a single 16-bit Status word.
-    def BC_RT_Transfer(self, rt_num_rx, data):
+    def BC_RT_Transfer(self, rt_ptr, data):
 
         # Creates an array of two characters that will later be turning into 16 bit data words
         array = self.string_to_tokens(data)
@@ -317,21 +299,22 @@ class bc(object):
             bit_string_list.append(bs)
 
         # Create and issue the command word for the receiving RT
-        tmp_msg_rx     =    self.create_command_word(rt_num_rx, self.rx.int, self.zero.int, msg_count)
+        tmp_msg_rx     =    self.create_command_word(rt_ptr.return_rt_num().int, self.rx.int, self.zero.int, msg_count)
         self.write_message(tmp_msg_rx)
+        rt_ptr.receive()
         #self.set_rt_read_perm(rt_num_rx, bool(True))
         
         #self.writing = False
         
-        for rt in self.rt_list:
+        '''for rt in self.rt_list:
             if rt.num.int == rt_num_rx:
                 indx = self.rt_list.index(rt)
                 break
             else:
                 print("RT " + str(rt_num_rx) + " not found!")
-                return
+                return'''
 
-        command = self.rt_list[indx].databus.read_BitArray()
+        command = rt_ptr.databus.read_BitArray()
         print("BC sent command word and that was " + str(command))
                 
         #Timer(0,self.rt_list[indx].receive()).start()
@@ -341,13 +324,13 @@ class bc(object):
             data_msg     =    self.create_data_word(bs)
             self.databus.write_BitArray(BitArray("0b" + data_msg))
             # Set RT read permission to True
-            self.set_rt_read_perm(rt_num_rx, bool(True))
-            self.wait_until_rt_finishes(self.rt_list[indx])
+            print("WROTE BITARRAY - " + str(data_msg))
+            rt_ptr.receive()
+            print("RT RECEIVED BITARRAY AND HAS RETURN EXECUTION TO BC")
 
-        # Set the designated rt's write permission to True and wait to be given back write perms
-        self.set_rt_write_perm(rt_num_rx, bool(True))
-        sleep(.5) #self.wait_until_rt_finishes(self.rt_list[indx])
+        # Have the RT transmit a status word
         
+
         # Create and issue the status word from the receiving RT
         rt_status_word      =    self.read_message()
         
@@ -361,7 +344,7 @@ class bc(object):
         
         # Make sure BC has write permissions before next event
         self.writing = True
-        print("The transfer from BC to RT " + rt_num_rx + " has terminated.")
+        print("The transfer from BC to RT " + str(rt_ptr.return_rt_num().int) + " has terminated.")
         return
 
     # RT -> BC
@@ -407,7 +390,7 @@ class bc(object):
                 message += i
 
         print("The message received from " + str(rt_num_tx)+ " is " + message)
-        self.wait_until_rt_finishes()
+        #self.wait_until_rt_finishes()
         return ("The transfer from RT " + str(rt_num_tx) + " to BC has terminated")
 
     # RT -> RT
