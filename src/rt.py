@@ -37,7 +37,7 @@ class rt(object):
         self.last_status_word   = BitArray(uint=0, length=20)   # Use to store last status word so we can transmit
         self.last_command_word  = BitArray(uint=0, length=20)   # Use to store last received command word
         self.dwords_expected    = 0       # A counter that keeps track of how many data words the terminal is still expecting to receive
-        self.dwords_stored      = ""      # Stores a string of data words as they come in, eventually being output to the terminal.
+        self.dwords_stored      = []      # Stores a list of data words as they come in, eventually being output to the terminal.
 
         # Flags for handling execution of message transfers
         self.num_reads          = 0       # Count indicating how many data words this RT has to read from the bus in a given transfer
@@ -71,66 +71,6 @@ class rt(object):
 
         return
 
-    # Event Handler
-    def event_handler(self):
-        if len(self.events > 0):
-            # Grab event from event list and create array of data
-            event = self.events.popleft()
-            data = self.string_to_tokens(event[6])
-            bit_string_list = list()
-            for strn in data:
-                bs = Bits('0b'+(''.join(format(i,'08b') for i in bytearray(strn, encoding='utf-8'))))
-                bit_string_list.append(bs)
-
-            # If event is supposed to repeat, do this
-            if (int(event[2]) == 1):
-                # Decrement the num occurences if num occurences > 0 and not inf (-1), put back on right of events list 
-                if (int(event[4]) > 0):
-                    event[4] = str(int(event[4]) - 1)
-                    self.events.append(event)
-                
-                elif (int(event[4]) <= -1):
-                    self.events.append(event)
-            
-            # Wait until bus is not in use before continuing (checking each 5 ms)
-            while (self.databus.is_in_use == 1):
-                sleep(0.005)
-
-            ## TODO: Finish these
-            
-            # Transmit some data
-            if self.rx_tx_mode == '1':
-                #self.transmit(data)
-                for bs in bit_string_list:
-                    self.wait_for_write_perm()
-                    # need to create dataword lol one sec
-                    data_msg = data_word.create_data_word(bs)
-                    self.databus.write_BitArray(data_msg)
-                    self.writing = False
-                    ## TODO: REMOVE THESE AND REPLACE WITH CHECKING ON THE BC SIDE
-                    #self.databus.writing = True
-                    #self.databus.reading = True
-                pass
-                
-                
-            # Receive some data
-            elif self.rx_tx_mode == '0':
-                cumulative_data = []
-                for _ in range(self.num_reads) :
-                    self.wait_for_read_perm()
-                    tmp = self.databus.read_BitArray()
-                    cumulative_data.append(chr(int(tmp.bin[3:11],2)) + chr(int(tmp.bin[11:19],2)))
-                    sleep(self.frequency)
-                print("Complete Message is: \"" + "".join(cumulative_data) + "\"")
-
-            # Otherwise, undefined transfer
-            else: 
-                print("ERROR: Event undefined transfer! ", event[0], "->", event[1])
-                return
-            
-        else:
-            return
-
     # Function to handle receiving data
     def receive(self):
         # This function handles the logic for when the RT gets a command to RX
@@ -142,7 +82,6 @@ class rt(object):
         # If the message is a command word, do this
         if (tmp_msg.bin[0:3] == "101"):
             print("RT" + str(self.num.int) + " received command word: " + str(tmp_msg))
-            print("The RT is to receive " + str(int(tmp_msg.bin[14:19], base=2)) + " data words!")
             #print("The RT is to receive " + str(tmp_msg.bin[14:19]) + " data words!")
             #print(tmp_msg.bin)
             return
@@ -154,54 +93,16 @@ class rt(object):
         
         # If the message is a data word, do this
         elif (tmp_msg.bin[0:3] == "110"):
-            print("RT" + str(self.num.int) + " received data word: " + str(tmp_msg))
-            #self.dwords_stored = self.dwords_stored + str(tmp_msg[3:19])
-            
+            tmp_data = str(chr(int(tmp_msg.bin[3:11],2)) + chr(int(tmp_msg.bin[11:19],2)))
+            self.dwords_stored.append(tmp_data)
+            print("RT" + str(self.num.int) + " received data word " + str(tmp_msg) + " recieved. Data was: \"" + ("".join(tmp_data)) + "\"")
             return
-        """
-        if (tmp_msg.bin[9:14] == BitArray(uint=0, length=5) or tmp_msg.bin[9:14] == BitArray(uint=31, length=5)):
-        
-            self.process_mode_code(tmp_msg.bin[9:14])
-            
-        # The mode code field will else represent the number of words the RT needs to transmit or receive
-        else:
-            
-            # Creates a message count of how many words to either transmit or receive
-            msg_count = int(tmp_msg.bin[14:19],2)
-            
-            # Handle receiving the messages
-            data_word_list = []
-            for _ in range(0, msg_count):
-                # Wait for read permission
-                self.reading = False
-                print("Waiting for read perms...")
-                self.wait_for_read_perm()
-                # Reads the data word off of the data bus
-                msg = self.read_message()
-                char1 = chr(int(msg[0:8], 2))
-                char2 = chr(int(msg[8:], 2))
-                data_word_list.append(char1 + char2)
-                print("RT#" +  self.num + " has received a data word with \"" + char1 + char2 + "\"")
-                self.reading = False
-                
-            # Wait for write permission
-            self.writing = False
-            print("My read perm is: " + str(self.reading) + "My write perm is: " + str(self.writing))
-            print("Waiting for write perms...")
-            self.wait_for_write_perm()
-            # Send status word acknowledging the reception of all messages
-            #status_word = self.create_status_word()
-            #self.issue_status_word(status_word)
-            # Output complete message
-            print("RT#" +  str(self.num.int) + "'s complete received message is : \"" + ("".join(data_word_list)) + "\"")
-        return
-        """
 
-    ##TODO: Finish this
     # Funciton to return the received data words
     def show_received_data(self):
-        #sys.stdout.write(" ".join(self.dwords_stored))
         print("RT#" +  str(self.num.int) + "'s complete received message is : \"" + ("".join(self.dwords_stored)) + "\"")
+        # Empty list
+        self.dwords_stored = []
         return
 
     # Function to handle transmitting data
