@@ -366,7 +366,7 @@ class bc(object):
         sleep(self.frequency)
         
         if (self.validate_status_word(rt_status_word) == 0):
-            print("RT " + str(rt_num_tx) + " is sending messages to BC")
+            print("RT " + str(rt_ptr_tx) + " is sending messages to BC")
             self.error = 0
         else:
             print("***STATUS MESSAGE ERROR***")
@@ -386,9 +386,9 @@ class bc(object):
         for i in data_word_list:
                 message += i
 
-        print("The message received from " + str(rt_num_tx)+ " is " + message)
+        print("The message received from " + str(rt_ptr_tx)+ " is " + message)
         #self.wait_until_rt_finishes()
-        return ("The transfer from RT " + str(rt_num_tx) + " to BC has terminated")
+        return ("The transfer from RT " + str(rt_ptr_tx) + " to BC has terminated")
 
     # RT -> RT
     ## Remote Terminal to Remote Terminal Transfer
