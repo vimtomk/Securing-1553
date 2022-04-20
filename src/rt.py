@@ -17,7 +17,7 @@ class rt(object):
         self.rx_tx_mode         = BitArray(uint=0, length=1) # RT starts off cleared and is set for transmit mode
         self.received_msgs      = list()  # A list of the received messages (as BitArray) used in context
                                           # to keep track of data needed for sent status words.
-            
+        
         self.instrumentation    = 0       # One bit flag, always 0 when transmitting a status word
         self.service            = 0       # Service request bit. We will not use this functionality
         self.broadcast_command  = 0       # Broadcast command bit.
@@ -101,17 +101,17 @@ class rt(object):
     # Funciton to return the received data words
     def show_received_data(self):
         print("RT#" +  str(self.num.int) + "'s complete received message is : \"" + ("".join(self.dwords_stored)) + "\"")
+        print(self.dwords_stored)
         # Empty list
         self.dwords_stored = []
         return
 
     # Function to handle transmitting data
-    def transmit(self):
+    def transmit(self, data):
 
         ## COPIED BLOCK ##
         # Looks at the event list to see what message to send 
-        sending_msg = self.events.pop()
-        char_pairs = self.string_to_tokens(sending_msg[6])
+        char_pairs = self.string_to_tokens(data)
                 
         # Create data words
         data_send_list = []
@@ -124,8 +124,20 @@ class rt(object):
                 complete_data_word = complete_data_word + "0"
             complete_data_word = BitArray(complete_data_word)
             data_send_list.append(complete_data_word)
+            print(complete_data_word)
         # Send data words in time to be taken in by recipient
         ## COPIED BLOCK ##
+
+    # Function to send a status word on the bus
+    def send_status_word(self):
+        # Create status word from status of the RT
+        print("RT is creating a status word!")
+        sendable_status_word = status_word.create_status_word(self.num.int, self.msg_err, self.instrumentation, self.service, \
+            0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
+        # Add  status word to the databus
+        print("RT is sending " + str(sendable_status_word) + " data, which is a status word!")
+        self.databus.write_BitArray(sendable_status_word)
+        return
 
     # Read message from bus (20 bits)
     def read_message(self):
@@ -156,7 +168,7 @@ class rt(object):
 
         elif (mode_code==BitArray(uint=2, length=5)):	# case 2:  Transmit Status Word | No Data Word Associated
             # Create status word from status of the RT
-            sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
+            sendable_status_word = status_word(self.num, self.msg_err, self.instrumentation, self.service, \
                 0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
             # Add  status word to the databus
             self.databus.write_BitArray(sendable_status_word)
@@ -179,7 +191,7 @@ class rt(object):
             # Clear terminal flag bit FIRST
             self.terminal = 0
             # Send status word
-            sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
+            sendable_status_word = status_word(self.num, self.msg_err, self.instrumentation, self.service, \
                 0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
             self.databus.write_BitArray(sendable_status_word)
             return
@@ -188,19 +200,19 @@ class rt(object):
             # Override terminal flag bit FIRST
             self.terminal = 1
             # Send status word
-            sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
+            sendable_status_word = status_word(self.num, self.msg_err, self.instrumentation, self.service, \
                 0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
             self.databus.write_BitArray(sendable_status_word)
             return
         
         elif (mode_code==BitArray(uint=8, length=5)):	# case 8:  Reset Remote Terminal | No Data Word Associated
             # Send status word FIRST
-            sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
+            sendable_status_word = status_word(self.num, self.msg_err, self.instrumentation, self.service, \
                 0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
             self.databus.write_BitArray(sendable_status_word)
             # Reset RT values to default
             self.rx_tx              = BitArray(uint=0, length=1)
-            self.message_error      = BitArray(uint=0, length=1)
+            self.msg_err      = BitArray(uint=0, length=1)
             self.instrumentation    = BitArray(uint=0, length=1)
             self.service            = BitArray(uint=0, length=1)
             self.broadcast_command  = BitArray(uint=0, length=1)
@@ -212,7 +224,7 @@ class rt(object):
 
         elif (mode_code==BitArray(uint=9, length=5)):   # case 9: Receive Bus Controller Public Key | 4 Data Words Associated
             # Send status word FIRST
-            sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
+            sendable_status_word = status_word(self.num, self.msg_err, self.instrumentation, self.service, \
                 0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
 
             data_word_list = []           
@@ -231,7 +243,7 @@ class rt(object):
 
         elif (mode_code==BitArray(uint=10, length=5)):   # case 10: Transmit Remote Terminal Public Key | 4 Data Words Associated
             # Send status word FIRST
-            sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
+            sendable_status_word = status_word(self.num, self.msg_err, self.instrumentation, self.service, \
                 0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
             
             sleep(self.frequency)
@@ -253,7 +265,7 @@ class rt(object):
           
         elif (mode_code==BitArray(uint=16, length=5)):	# case 16: Transmit Vector Word | Data Word Associated
             # Send status word FIRST
-            sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
+            sendable_status_word = status_word(self.num, self.msg_err, self.instrumentation, self.service, \
                 0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
             self.databus.write_BitArray(sendable_status_word)
             # Send data word containing bits 4-19 of the last command word this RT received, excluding mode code bits
@@ -270,7 +282,7 @@ class rt(object):
         
         elif (mode_code==BitArray(uint=19, length=5)):  # case 19: Transmit Bit Word |  Data Word Associated
             
-            sendable_status_word = status_word(self.num, self.message_error, self.instrumentation, self.service, \
+            sendable_status_word = status_word(self.num, self.msg_err, self.instrumentation, self.service, \
                 0, self.broadcast_command, self.busy, self.subsystem, self.dynamic_bus, self.terminal)
             
             self.databus.write_BitArray(sendable_status_word)
@@ -289,7 +301,7 @@ class rt(object):
         
         else:				                            # default: mode_code not defined, set message error bit
             print("There was a mode code word recieved, but the meaning is undefined!")
-            self.message_error = 1
+            self.msg_err = 1
             return
 
     # Craft status word

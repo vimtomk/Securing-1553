@@ -54,7 +54,6 @@ rt_p1.receive()
 print("BC sending data to RT: \"hello\"")
 bc_p1.BC_RT_Transfer(rt_p1, bc_p1.events[0][6])
 
-print("RT received this data from BC:")
 rt_p1.show_received_data()
 
 # Shut down RTs, BC

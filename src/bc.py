@@ -82,13 +82,16 @@ class bc(object):
         return self.num
 
     # Validates that a received status word has no errors
-    def validate_status_word(self, status_word):
+    def validate_status_word(self):
         self.error = 0
-        if (status_word.bin[0:3] !=  "111"):
+        stat_word = self.databus.read_BitArray()
+        if (stat_word.bin[0:3] !=  "111"):
             self.error = 1
+            print("STATUS WORD NOT REALLY STATUS WORD!")
         # Check for odd parity in the 16 data bits (exclude the type bits)
-        elif ((status_word.raw_data.count(1) % 2) == 0):
+        elif ((stat_word.bin[3:20].count("1") % 2) == 0):
             self.error = 1
+            print("PARITY BIT ERROR!")
         return self.error
 
     # Validates that a received data word has no errors
@@ -307,18 +310,8 @@ class bc(object):
         tmp_msg_rx     =    self.create_command_word(rt_ptr.return_rt_num().int, self.rx.int, self.zero.int, msg_count)
         self.write_message(tmp_msg_rx)
         rt_ptr.receive()
-        #self.set_rt_read_perm(rt_num_rx, bool(True))
-        
-        #self.writing = False
-        
-        '''for rt in self.rt_list:
-            if rt.num.int == rt_num_rx:
-                indx = self.rt_list.index(rt)
-                break
-            else:
-                print("RT " + str(rt_num_rx) + " not found!")
-                return'''
 
+        # Pull the command and print message contents
         command = rt_ptr.databus.read_BitArray()
         print("BC sent command word and that was " + str(command))
                 
@@ -334,16 +327,18 @@ class bc(object):
             print("RT RECEIVED BITARRAY AND HAS RETURN EXECUTION TO BC")
 
         # Have the RT transmit a status word
-        
+        rt_ptr.send_status_word()
 
         # Create and issue the status word from the receiving RT
-        rt_status_word      =    self.read_message()
+        rt_status_word      =    self.databus.read_BitArray()
         
-        if (self.validate_status_word(rt_status_word) == 0):
-            print("RT has successfully received the message from BC.")
+        if (self.validate_status_word() == 0):
+            print("RT has successfully received the message from BC, as indicated from good status word!")
+            print(rt_status_word)
             self.error = 0
         else:
             print("***STATUS MESSAGE ERROR***")
+            print(rt_status_word)
             self.error = 1
             return
         
@@ -357,19 +352,16 @@ class bc(object):
     ## The Bus Controller sends one transmit command word to a Remote Terminal. 
     ## The Remote Terminal then sends a single Status word 
     ## immediately followed by 1 to 32 words.
-    def RT_BC_Transfer(self, rt_ptr, data):
+    def RT_BC_Transfer(self, rt_ptr_tx, data):
         
         # Calculate number of data words that will be transferred
         msg_count = ceil(len(data))
         
         # Create and issue the command word for the transmitting RT
-        tmp_msg_tx = self.create_command_word(rt_num_tx, self.tx.int, self.zero.int, msg_count)
+        tmp_msg_tx = self.create_command_word(rt_ptr_tx, self.tx.int, self.zero.int, msg_count)
         self.write_message(tmp_msg_tx)
-        self.writing = False
-        self.set_rt_write_perm(rt_num_tx, True)
 
-        # Waits for a status word to be received from the transmitting RT and validate it
-        
+        # Waits for a status word to be received from the transmitting RT and validate it 
         rt_status_word = self.read_message()
         sleep(self.frequency)
         

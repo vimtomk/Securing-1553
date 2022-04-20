@@ -189,10 +189,7 @@ class status_word(object):
         # Once parity is calculated, prepend the msg type.
         msg.prepend(msg_type)
 
-        # Print full message in binary without <0b> at the beginning.
-        #print(self.msg.bin)
-
-        return msg.bin
+        return msg
 
 
 """Sample code to turn string into binary (helpful when taking in string)
