@@ -14,7 +14,7 @@ print("Starting the MIL-STD-1553 Databus, Python Simulation Demonstration.")
 print("Order of simulation demonstration is...\nBC -> RT Transfer\nRT -> BC Transfer\nRT -> RT Transfer")
 
 ################################################################################################################################
-
+'''
 # Demonstrate BC -> RT transfer
 print("\nPress enter to continue to the BC -> RT Transfer demonstration...")
 input()
@@ -67,28 +67,32 @@ sleep(.5)
 print("Shutting down data bus...")
 databus.__del__()
 sleep(.5)
-
-################################################################################################################################
 '''
+################################################################################################################################
 # Demonstrate RT -> BC transfer
 print("\nPress enter to continue to the RT -> BC Transfer demonstration...")
 input()
 print("Starting RT -> BC Transfer...")
-sleep(2)
+sleep(1)
 
 # Start bus for this demo
 print("Initializing data bus...")
 databus = bus()
-sleep(.5)
+sleep(.2)
 # Start BC, RT
 print("Initializing Bus Controller...")
 bc_p2 = bc(0)
-sleep(.5)
+sleep(.2)
 print("Initializing Remote Terminal...")
 rt_p2 = rt(2)
-sleep(.5)
+sleep(.2)
 
 ##TODO: Implement a demonstration of the RT to BC transfer
+bc_p2 = bc(0, rt_array=[rt_p2])
+print("Creating event RT02->BC Transfer!")
+bc_p2.events.append(["RT02","BC","1","1","5","data","Howdy"])
+
+bc_p2.RT_BC_Transfer(rt_p2, bc_p2.events[0][6])
 
 # Shut down RTs, BC
 print("Shutting down the Remote Terminal...")
@@ -103,7 +107,7 @@ databus.__del__()
 sleep(.5)
 
 ################################################################################################################################
-
+'''
 # Demonstrate RT -> RT transfer
 print("\nPress enter to continue to the RT -> RT Transfer demonstration...")
 input()

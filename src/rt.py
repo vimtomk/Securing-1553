@@ -108,25 +108,14 @@ class rt(object):
 
     # Function to handle transmitting data
     def transmit(self, data):
+        # Transmit the two characters!
 
-        ## COPIED BLOCK ##
-        # Looks at the event list to see what message to send 
-        char_pairs = self.string_to_tokens(data)
-                
-        # Create data words
-        data_send_list = []
-        for char_pair in char_pairs:
-            
-            complete_data_word = "0b110" + bin(ord(char_pair[0]))[2:] + bin(ord(char_pair[1]))[2:]
-            if(complete_data_word.count(1) % 2 == 0):
-                complete_data_word = complete_data_word + "1"
-            else:
-                complete_data_word = complete_data_word + "0"
-            complete_data_word = BitArray(complete_data_word)
-            data_send_list.append(complete_data_word)
-            print(complete_data_word)
-        # Send data words in time to be taken in by recipient
-        ## COPIED BLOCK ##
+        self.databus.write_BitArray(BitArray("0b" + data))
+
+        #print(str(data.bin))
+        print("RT" + str(self.num.int) + " WROTE BITARRAY - " + str(data))
+        print(str(self.databus.read_BitArray()))
+
 
     # Function to send a status word on the bus
     def send_status_word(self):

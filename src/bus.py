@@ -47,6 +47,7 @@ class bus(object):
     def write_BitArray(self, in_data):
         '''Takes in a BitArray, and overwrites bus data ALL AT ONCE'''
         if(len(in_data) != 20):
+            print("DATA NOT 20 BITS! NOT WRITING!")
             return # Not an array of length 20, do not write!
         for value in in_data:
             if not ( (value == True) or (value == False) ):
