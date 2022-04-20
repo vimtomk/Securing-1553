@@ -36,7 +36,7 @@ class bc(object):
         # Instantiate the queues that store events (sequences of messages to be sent)
         self.events             = deque()   # A list of events from 1553_simulator. Add critical messages (like responses to other devices) to the front of the queue
         self.dwords_expected    = 0         # A counter that keeps track of how many data words the terminal is still expecting to receive
-        self.dwords_stored      = ""        # Stores a string of data words as they come in, eventually being output to the terminal.
+        self.dwords_stored      = []        # Stores a string of data words as they come in, eventually being output to the terminal.
 
         # Flags for handling execution of message transfers
         self.num_reads          = 0         # Count indicating how many data words the BC has to read from the bus in a given transfer
@@ -50,6 +50,11 @@ class bc(object):
         # For Timer functions, create a variable to check if the BC object still exists before looping execution
         self.exists = "Yes!"
 
+    def show_received_data(self):
+        print("BC" +  str(self.num.int) + "'s complete received message is : \"" + ("".join(self.dwords_stored)) + "\"")
+        # Empty list
+        self.dwords_stored = []
+        return
 
     def main(self):
 
@@ -352,7 +357,7 @@ class bc(object):
     ## The Bus Controller sends one transmit command word to a Remote Terminal. 
     ## The Remote Terminal then sends a single Status word 
     ## immediately followed by 1 to 32 words.
-    def RT_BC_Transfer(self, rt_num_tx, data):
+    def RT_BC_Transfer(self, rt_ptr, data):
         
         # Calculate number of data words that will be transferred
         msg_count = ceil(len(data))

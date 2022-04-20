@@ -6,9 +6,9 @@ from bus import bus
 from bc import bc
 from rt import rt
 from bitstring import BitArray
-import threading
-import multiprocessing
-from multiprocessing import *
+#import threading
+#import multiprocessing
+#from multiprocessing import *
 
 print("Starting the MIL-STD-1553 Databus, Python Simulation Demonstration.")
 print("Order of simulation demonstration is...\nBC -> RT Transfer\nRT -> BC Transfer\nRT -> RT Transfer")
@@ -35,7 +35,6 @@ print("Initializing Remote Terminal...")
 rt_p1 = rt(1)
 sleep(.5)
 
-##TODO: Implement a demonstration of the BC to RT transfer
 # Start BC, RT
 print("Initializing Bus Controller...")
 bc_p1 = bc(0, rt_array=[rt_p1])
