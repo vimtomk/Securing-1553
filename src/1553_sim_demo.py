@@ -14,7 +14,7 @@ print("Starting the MIL-STD-1553 Databus, Python Simulation Demonstration.")
 print("Order of simulation demonstration is...\nBC -> RT Transfer\nRT -> BC Transfer\nRT -> RT Transfer")
 
 ################################################################################################################################
-'''
+
 # Demonstrate BC -> RT transfer
 print("\nPress enter to continue to the BC -> RT Transfer demonstration...")
 input()
@@ -67,10 +67,10 @@ sleep(.5)
 print("Shutting down data bus...")
 databus.__del__()
 sleep(.5)
-'''
+
 ################################################################################################################################
 # Demonstrate RT -> BC transfer
-'''
+
 print("\nPress enter to continue to the RT -> BC Transfer demonstration...")
 input()
 print("Starting RT -> BC Transfer...")
@@ -105,43 +105,43 @@ sleep(.5)
 print("Shutting down data bus...")
 databus.__del__()
 sleep(.5)
-'''
+
 ################################################################################################################################
 
 # Demonstrate RT -> RT transfer
 print("\nPress enter to continue to the RT -> RT Transfer demonstration...")
 input()
 print("Starting RT -> RT Transfer...")
-sleep(2)
+sleep(0.5)
 
 # Start bus for this demo
 print("Initializing data bus...")
 databus = bus()
-sleep(.5)
+sleep(.1)
 # Start BC, RT
 print("Initializing Bus Controller...")
 #bc_p3 = bc(0)
-sleep(.5)
+sleep(.1)
 print("Initializing Remote Terminals...")
 rt_p3_1 = rt(3)
 rt_p3_2 = rt(4)
-sleep(.5)
+sleep(.1)
 
 bc_p3 = bc(0, rt_array=[rt_p3_1, rt_p3_2])
 print("Creating event RT03->RT04 Transfer!")
 bc_p3.events.append(["RT03","RT04","1","1","5","data","Heeeey"])
 
-bc_p3.RT_BC_Transfer(rt_p3_1, rt_p3_2, bc_p3.events[0][6])
+bc_p3.RT_RT_Transfer(rt_p3_1, rt_p3_2, bc_p3.events[0][6])
 
 # Shut down RTs, BC
 print("Shutting down the Remote Terminals...")
 rt_p3_1.__del__()
 rt_p3_2.__del__()
-sleep(.5)
+sleep(.2)
 print("Shutting down the Bus Controller...")
 bc_p3.__del__()
-sleep(.5)
+sleep(.2)
 # Delete bus for next demo
 print("Shutting down data bus...")
 databus.__del__()
-sleep(.5)
+sleep(.2)

@@ -423,16 +423,14 @@ class bc(object):
             bit_string_list.append(bs)
 
         # Create and issue the command word for the receiving RT
-        tmp_msg_rx    =  self.create_command_word(rt_rx_ptr, self.rx, self.zero, msg_count)
+        tmp_msg_rx    =  self.create_command_word(rt_rx_ptr.num.uint, self.rx.uint, 0, msg_count)
         self.write_message(tmp_msg_rx)
         rt_rx_ptr.receive()
-        sleep(self.frequency)
         
         # Create and issue the command word for the transmitting RT
-        tmp_msg_tx    =  self.create_command_word(rt_tx_ptr, self.tx, self.zero, msg_count)
+        tmp_msg_tx    =  self.create_command_word(rt_tx_ptr.num.uint, self.tx.uint, 0, msg_count)
         self.write_message(tmp_msg_tx)
         rt_tx_ptr.receive()
-        sleep(self.frequency)
         
         # Receive status word from transmitting RT
         rt_tx_ptr.send_status_word()
@@ -442,8 +440,6 @@ class bc(object):
         if (self.validate_status_word() == 0):
             print("RT is going to send data words, and has sent a status word.")
             print(rt_status_word)
-        
-        if (self.validate_status_word(rt_tx_ptr) == 0):
             print("RT " + str(rt_tx_ptr.num.int) + " is sending messages to RT " + str(rt_rx_ptr.num.int) + ".")
             self.error = 0
         else:
@@ -462,10 +458,10 @@ class bc(object):
             print("RT RECEIVED BITARRAY AND HAS RETURN EXECUTION TO TRANSMITTING RT")
 
         # Create and issue the status word from the receiving RT
+        rt_rx_ptr.send_status_word()
         rt_status_rx  = self.read_message()
-        sleep(self.frequency)
         
-        if (self.validate_status_word(rt_status_rx) == 0):
+        if (self.validate_status_word() == 0):
             print("RT " + str(rt_rx_ptr.num.int) + " is finished receiving messages from RT " + str(rt_tx_ptr.num.int) + ".")
             self.error = 0
         else:
