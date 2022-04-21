@@ -7,7 +7,7 @@ from time import sleep
 from bitstring import Bits, BitArray
 from queue import Queue
 import time, random, threading, secrets
-from encryptor import DHKE
+#from encryptor import DHKE
 from collections import deque
 from math import ceil
 from threading import Timer

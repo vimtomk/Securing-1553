@@ -8,10 +8,12 @@ import queue, threading, secrets
 from collections import deque
 import sys
 
+#from src.test import decrypt
+
 class rt(object):
     
     # RT Constructor - number is to assign RT number
-    def __init__(self, number):
+    def __init__(self, number, crypt=False, key=None):
 
         self.num                = BitArray(uint=number, length=5)
         self.rx_tx_mode         = BitArray(uint=0, length=1) # RT starts off cleared and is set for transmit mode
@@ -26,7 +28,9 @@ class rt(object):
         self.dynamic_bus        = 0       # Set if turned into a dynamic BC.
         self.terminal           = 0       # Set if this RT has a problem. Cleared on resolution.
         self.databus            = bus()   # From now on, self.bus points to the shared data bus
-        
+        self.encrypted          = crypt   # Denotes if this RT should use encryption in RT->RT Transfers
+        self.shift              = key     # The shift to be used for the Caesar Cipher
+
         self.rcvd_broadcast     = 0       # Flag to indicate if RT received broadcast message for Transmit Last Status Word
         self.msg_err            = 0       # Flag to indicate if last received message from BC had an error
                                           # Condition 1 : RT receives a word with an error (parity)
@@ -68,8 +72,42 @@ class rt(object):
     ## TODO: Generate key-pair function to call when a broadcast with non-zero
     #        reserved bits is received
     def gen_key(self):
-
         return
+
+    def encrypt(self, text,s):
+        result = ""
+
+        # transverse the plain text
+        for i in range(len(text)):
+            char = text[i]
+        
+            # Encrypt uppercase characters in plain text
+            if (char.isupper()):
+                result += chr((ord(char) + s-65) % 26 + 65)
+            
+            # Encrypt lowercase characters in plain text
+            else:
+                result += chr((ord(char) + s - 97) % 26 + 97)
+                
+        return result
+    
+    def decrypt(self, text,s):
+        result = ""
+        shift = 0 - s
+        
+        # transverse the cypher text
+        for i in range(len(text)):
+            char = text[i]
+        
+            # Decrypt uppercase characters to plain text
+            if (char.isupper()):
+                result += chr((ord(char) + shift-65) % 26 + 65)
+        
+            # Decrypt lowercase characters to plain text
+            else:
+                result += chr((ord(char) + shift-97) % 26 + 97)
+        
+        return result
 
     # Function to handle receiving data
     def receive(self):
@@ -93,9 +131,16 @@ class rt(object):
         
         # If the message is a data word, do this
         elif (tmp_msg.bin[0:3] == "110"):
-            tmp_data = str(chr(int(tmp_msg.bin[3:11],2)) + chr(int(tmp_msg.bin[11:19],2)))
-            self.dwords_stored.append(tmp_data)
-            print("RT" + str(self.num.int) + " received data word " + str(tmp_msg) + " recieved. Data was: \"" + ("".join(tmp_data)) + "\"")
+            if self.encrypted: # CASE - RT->RT Transfer w/ encryption
+                tmp_data = str(chr(int(tmp_msg.bin[3:11],2)) + chr(int(tmp_msg.bin[11:19],2)))
+                print("RT" + str(self.num.int) + " received data word " + str(tmp_msg) + " recieved. Data was: \"" + ("".join(tmp_data)) + "\"")
+                decrypted_data = self.decrypt(tmp_data, self.shift)
+                self.dwords_stored.append(decrypted_data)
+                print("RT" + str(self.num.int) +" has decrypted the data. It actually reads: " + decrypted_data)
+            else:
+                tmp_data = str(chr(int(tmp_msg.bin[3:11],2)) + chr(int(tmp_msg.bin[11:19],2)))
+                self.dwords_stored.append(tmp_data)
+                print("RT" + str(self.num.int) + " received data word " + str(tmp_msg) + " recieved. Data was: \"" + ("".join(tmp_data)) + "\"")
             return
 
     # Funciton to return the received data words
@@ -108,9 +153,18 @@ class rt(object):
 
     # Function to handle transmitting data
     def transmit(self, data):
-        # Transmit the two characters!
+        if self.encrypted: # CASE - RT->RT Transfer w/ encryption
+            tmp_data = str(chr(int(data[3:11],2)) + chr(int(data[11:19],2)))
+            print("Data in plaintext: " + tmp_data)
+            encrypted_txt = self.encrypt(tmp_data, self.shift)
+            print("Data transmitted: " + str(encrypted_txt))
+            bs  = Bits('0b'+(''.join(format(i, '08b') for i in bytearray(encrypted_txt, encoding='utf-8'))))
+            msg_out = data_word.create_data_word(bs)
+            self.databus.write_BitArray(BitArray("0b" + msg_out))
 
-        self.databus.write_BitArray(BitArray("0b" + data))
+        # Transmit the two characters!
+        else:
+            self.databus.write_BitArray(BitArray("0b" + data))
 
         #print(str(data.bin))
         print("RT" + str(self.num.int) + " WROTE BITARRAY - " + str(data))
@@ -298,52 +352,6 @@ class rt(object):
         msg_out = status_word.create_status_word(self.num, self.msg_err, 0, 0, 0, self.broadcast_command, 0, 0, self.dynamic_bus, 0)
         return msg_out
 
-    # Main loop for listening to bus.
-    def main(self):
-        print("RT Main running!!!")
-        print(type(self))
-        while(self.databus.is_empty()):
-            sleep(.1)
-        # Grabs first message from bus if bus not empty and not in use
-        if not(self.databus.is_empty()):
-            # Wait for databus to not be in use.
-            while (self.databus.is_in_use()):
-                sleep(0.1)
-
-            tmp_msg = self.read_message()
-                
-            # Use RT method that passes bus queue to RT and processes the first message on the queue
-            if (tmp_msg.bin[3:8] == BitArray(uint=self.num, length=5)) and (tmp_msg.bin[0:3] == "101"): # Command Word
-                
-                # Store copy of relevent bits
-                self.last_command_word = tmp_msg
-                self.received_msgs.append(tmp_msg)
-
-                ## TODO: call the event handler
-
-                # Sets the tx/rx mode. 1 means transmit, 0 means receive
-                self.rx_tx_mode = tmp_msg.bin[8]
-                # If transmit set to 1
-                if self.rx_tx_mode == '1':
-                    self.transmit()
-
-                # Otherwise if transmit/receive set to 0
-                elif self.rx_tx_mode == "0":
-                    self.receive()
-                
-                            
-            # The RT has received a broadcast message                
-            #elif (tmp_msg.rt_addr.bin == BitArray(uint=31, length=5).bin):
-
-            # We have encountered a data-word that is not a command word
-            #else: 
-
-        # Databus is either empty, or we are done getting messages so wait for thread timer to be called again
-        else:
-            print("There was nothing on the bus to proccess!")
-            pass
-    # End of main()
-    
     def queue_message(self, command):
         '''Takes a command in from 1553_simulator.py and turns it into an event and queues it'''
         self.events.append(command)

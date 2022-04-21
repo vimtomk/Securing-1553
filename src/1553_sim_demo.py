@@ -27,9 +27,9 @@ databus = bus()
 sleep(.5)
 
 # Start BC, RT
-print("Initializing Bus Controller...")
-bc_p1 = bc(0)
-sleep(.5)
+#print("Initializing Bus Controller...")
+#bc_p1 = bc(0)
+#sleep(.5)
 
 print("Initializing Remote Terminal...")
 rt_p1 = rt(1)
@@ -38,6 +38,7 @@ sleep(.5)
 # Start BC, RT
 print("Initializing Bus Controller...")
 bc_p1 = bc(0, rt_array=[rt_p1])
+sleep(.5)
 
 print("Creating event BC->RT01 Transfer!")
 bc_p1.events.append(["BC","RT01","1","1","10","data","Hello"])
